@@ -1,9 +1,7 @@
+
 import requests
-import json
-import shelve
 from bs4 import BeautifulSoup as soup
-from collections import defaultdict
-from geopy import geocoders,location
+from geopy import geocoders
 import json
 
 
@@ -20,12 +18,12 @@ class setup_data:
             self.state_pairs = {}
             self.abbreviation_to_state = {}
             self.state_to_abbreviation = {}
-            self.user_location = [None,None,None]
+            self.user_location = [None,None]
             self.bands = []
             self()
 
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, location,bands):
         """If the user_settings file already exists this does nothing, but otherwise gets the required
         user info and saves to to a JSON file"""
         try:
@@ -34,9 +32,8 @@ class setup_data:
             self.state_pairs_find()
             self.state_abbreviation_associations()
             #location = input('Enter your current location in the form (optional = address), City, State,')
-            location = 'Grosse Ile, MI, United States'
             self.user_location_set(location)
-            self.get_bands()
+            self.get_bands(bands)
             self.save_data()
 
 
@@ -68,14 +65,12 @@ class setup_data:
         self.user_location[0] = tuple(abv for abv in self.abbreviation_to_state.keys()
                                  if abv in location or self.abbreviation_to_state[abv] in location)
         if not self.user_location[0]: self.user_location[0] = 'none'
-        self.user_location[1],self.user_location[2] = userloc.latitude,userloc.longitude
+        self.user_location[1] = (userloc.latitude,userloc.longitude)
 
-    def get_bands(self):
+    def get_bands(self,bands):
         """ Creating a list of bands for which concert info is wanted"""
-        while True:
-            band = input('Input band name (or enter to exit)')
-            if not band: return
-            else: self.bands.append(band)
+        for band in bands:
+            self.bands.append(band)
 
     def save_data(self):
         "Saves user data to a JSON file"
@@ -86,4 +81,3 @@ class setup_data:
                  'bands':self.bands}
         with open('user_settings','w') as settings:
             json.dump(data,settings)
-
