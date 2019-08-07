@@ -22,6 +22,8 @@ test = 1
 
 class ConcertFinder():
 
+    adjacent_states = {}
+
     def __init__(self,band):
 
         self.band = str("-".join(band.split(' '))) #for use in website searches
@@ -78,22 +80,29 @@ class ConcertFinder():
                 self._band_info_write()
 
     def band_info_sort(self):
+        """Filters out concerts base on time and location criteria"""
+        # TODO - impliment fitering of concert results by location (and make optional?)
         with self.concert_database:
             pass
-        date = '2019-01-01'
+        date = '2019-01-01' # Test value, remove when done
         current_date = gmtime()
 
         date = strptime(date, f"{date[:2]}%y-%m-%d")
         time_until_concert = ((mktime(date)-mktime(current_date))/604800) # in weeks, as '1607005' seconds isn't exactly informative
 
-
-test = ConcertFinder('streetlight manifesto')
-
-test.band_info_sort()
+    def location_filter(self):
 
 
+#test = ConcertFinder('streetlight manifesto')
+
+#test.band_info_sort()
 
 
+
+def test():
+    e = requests.get('https://www.google.com/maps/place/SunOpta+Minerals')
+    print(e.url)
+test()
 
 
 
