@@ -1,15 +1,25 @@
-from appJar import gui
+from tkinter import *
+
 from InitialSetup import setup_data
 
-class StartupInterface:
+
+
+
+
+class StartupInterface(Frame):
     """Initializes required user data on first time use"""
-    def __init__(self):
-        self.interface = gui()
+    def __init__(self,master=None):
+        super().__init__(master)
         try:
             with open('user_settings', 'r') as settings:
-                return
+                pass
         except FileNotFoundError:
-            self.interface = gui()
+            self.top_interface = Tk()
+            self.top_interface.mainloop()
+        else:
+            self.top_interface = Tk()
+            self.top_interface.mainloop()
+
 
 
     def main_menu(self):
@@ -36,5 +46,7 @@ class StartupInterface:
             print("location:", location, "Bands", bands)
 
 
-test = StartupInterface()
-test.main_menu()
+
+if __name__ == '__main__':
+    test = StartupInterface()
+    #test.main_menu()
