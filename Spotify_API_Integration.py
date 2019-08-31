@@ -24,18 +24,19 @@ class SpotifyIntegration:
         """Sets up user permissions if not already done"""
         self.uid = user_id
         scope = self.scopes[1]
-
-        token = util.prompt_for_user_token('1214002279',f'{scope}',redirect_uri='http://localhost/',client_secret='c1710a69f80c405d9ecad0eb1c6f548d',client_id=self.client_id)
+        token = util.prompt_for_user_token(user_id,f'{scope}',redirect_uri='http://localhost/',client_secret='c1710a69f80c405d9ecad0eb1c6f548d',client_id=self.client_id)
 
     def __call__(self, *args, **kwargs):
-        """"""
-        self.username = '1214002279'
+
+
+
         secret = 'c1710a69f80c405d9ecad0eb1c6f548d'
         client_id ='ce4091c720c04087ad60ed054ffd9760'
 
         # TODO remove token aquisition here and simpilify to just get tokens on initialization of an insance
+
         #This is mostly redundant as the token can just be taken from init
-        token = util.prompt_for_user_token('1214002279', f'playlist-read-private', redirect_uri='http://localhost/',
+        token = util.prompt_for_user_token(self.uid, f'playlist-read-private', redirect_uri='http://localhost/',
                                            client_secret='c1710a69f80c405d9ecad0eb1c6f548d', client_id=self.client_id)
         self.sp = spotipy.Spotify(auth=token)
 
@@ -44,9 +45,9 @@ class SpotifyIntegration:
 
         # Again, is there any reason for this to be here?
         if True:
-            playlists = self.sp.user_playlists(self.username)
-            playlist_data = self.search_playlists(playlists)
-            self.log_bands(playlist_data)
+            playlists = self.sp.user_playlists(self.uid)
+            playlist_data = yield self.search_playlists(playlists)
+            yield self.log_bands(playlist_data)
 
 
     def search_playlists(self,playlists):
@@ -61,8 +62,7 @@ class SpotifyIntegration:
             if playlist['owner']['id'] == self.uid: # the auth token is limited to reading only user-owned playlists
                 print(playlist['name'])
                 print('  total tracks', playlist['tracks']['total']) # prints no. of tracks in each playlist
-                results[playlist['name']] = self.sp.user_playlist(self.username, playlist['id'],fields="tracks,next")
-
+                results[playlist['name']] = self.sp.user_playlist(self.uid, playlist['id'],fields="tracks,next")
         return results
 
     def log_bands(self,playlist_data):
@@ -73,7 +73,7 @@ class SpotifyIntegration:
                 for artist in track_data['track']['artists']:
                     tracked_bands.append(artist['name'])
                     print(artist['name'])
-                    time.sleep(2)
+                    time.sleep(0.1)
         print(set(tracked_bands),len(set(tracked_bands)))
         return set(tracked_bands)
 
