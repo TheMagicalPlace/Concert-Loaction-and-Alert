@@ -6,7 +6,7 @@ import json
 
 import Spotify_API_Integration
 
-class setup_data:
+class LocatorSetup:
 
     def __init__(self):
         try:
@@ -21,21 +21,25 @@ class setup_data:
             self.state_to_abbreviation = {}
             self.user_location = [None,None]
             self.bands = []
-            self()
 
 
-    def __call__(self, location,bands):
+    def __call__(self):
         """If the user_settings file already exists this does nothing, but otherwise gets the required
-        user info and saves to to a JSON file"""
+        user info and saves to to a JSON file. Note this should only ever be called by the GUI, individual methods
+        should be called directly, if needed."""
         try:
             user_settings = open('user_settings', 'r')
         except:
-            self.state_pairs_find()
-            self.state_abbreviation_associations()
-            #location = input('Enter your current location in the form (optional = address), City, State,')
-            self.user_location_set(location)
-            self.get_bands(bands)
-            self.save_data()
+            if True:
+                self.state_pairs_find()
+                self.state_abbreviation_associations()
+                location = yield
+                self.user_location_set(location)
+                self.spotify_user_id = yield
+                bands = yield
+                self.get_bands(bands)
+                yield
+                self.save_data()
 
 
 
@@ -61,14 +65,19 @@ class setup_data:
             self.abbreviation_to_state[pairs[1][:-1]] = pairs[0]
 
     def user_location_set(self,location):
+        # TODO - find out what this returns for non-existant places (i.e. typos in user input)
         """Finds user location (latitude,longitude) via Nominatim"""
-        userloc = geocoders.Nominatim(user_agent="testing_location_find_10230950239").geocode(location,True)
-        self.user_location[0] = tuple(abv for abv in self.abbreviation_to_state.keys()
-                                 if abv in location or self.abbreviation_to_state[abv] in location)
-        if not self.user_location[0]: self.user_location[0] = 'none'
-        self.user_location[1] = (userloc.latitude,userloc.longitude)
+        if location:
+            userloc = geocoders.Nominatim(user_agent="testing_location_find_10230950239").geocode(location,True)
+            self.user_location[0] = tuple(abv for abv in self.abbreviation_to_state.keys()
+                                     if abv in location or self.abbreviation_to_state[abv] in location)
+            if not self.user_location[0]: self.user_location[0] = 'none'
+            self.user_location[1] = (userloc.latitude,userloc.longitude)
+        else:
+            self.user_location = ['Not Specified',('Not Specified','Not Specified')]
 
     def get_bands(self,bands):
+        # TODO - this is redundant, just set self.bands to what's being yielded during the call
         """ Creating a list of bands for which concert info is wanted"""
         for band in bands:
             self.bands.append(band)
@@ -79,6 +88,8 @@ class setup_data:
                  'user_location':self.user_location,
                  'state_to_abbreviation':self.state_to_abbreviation,
                  'abbreviation_to_state':self.abbreviation_to_state,
-                 'bands':self.bands}
+                 'bands':self.bands,
+                'spotify_id':self.spotify_user_id}
         with open('user_settings','w') as settings:
             json.dump(data,settings)
+        return 'None' # Necessary to avoid a StopIteration error

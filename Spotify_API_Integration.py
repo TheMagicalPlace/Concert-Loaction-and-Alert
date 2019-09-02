@@ -3,7 +3,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy,spotipy.util as util
 import time
 import json
-
+from collections import  defaultdict
 
 
 class SpotifyIntegration:
@@ -20,7 +20,6 @@ class SpotifyIntegration:
     client_id = 'ce4091c720c04087ad60ed054ffd9760'
 
     def __init__(self,user_id):
-        # TODO set a flag to not to run any of this if spotify integration is not wanted
         """Sets up user permissions if not already done"""
         self.uid = user_id
         scope = self.scopes[1]
@@ -43,9 +42,9 @@ class SpotifyIntegration:
         #What does this do?
         self.sp.trace = False
 
-        # Again, is there any reason for this to be here?
+        # Again, is there any reason for this to be here? -- Prevents StopIteration for 'reasons'
         if True:
-            playlists = self.sp.user_playlists(self.uid)
+            playlists = self.sp.user_playlists(self.uid,limit=50)
             playlist_data = yield self.search_playlists(playlists)
             yield self.log_bands(playlist_data)
 
@@ -55,28 +54,37 @@ class SpotifyIntegration:
         Searches through all of a users playlists and returns a dictionary of the resultant dictionaries
         keyed to each playlist name
         """
-        results = {}
+        results = defaultdict(list)
 
         # Loops through all of a users playlists
         for playlist in playlists['items']:
             if playlist['owner']['id'] == self.uid: # the auth token is limited to reading only user-owned playlists
-                print(playlist['name'])
-                print('  total tracks', playlist['tracks']['total']) # prints no. of tracks in each playlist
-                results[playlist['name']] = self.sp.user_playlist(self.uid, playlist['id'],fields="tracks,next")
+
+                #print(playlist['name'])
+                #print('  total tracks', playlist['tracks']['total']) # prints no. of tracks in each playlist
+
+                run_results = self.sp.user_playlist(self.uid, playlist['id'], fields="tracks,next")
+                tracks = run_results['tracks']
+                results[playlist['name']].append(tracks)
+                while tracks['next']:
+                    tracks = (self.sp.next(tracks))
+                    results[playlist['name']]+=tracks
         return results
 
     def log_bands(self,playlist_data):
         """Compiles a list of the all the artists appearing in the selected playlists"""
         tracked_bands = []
-        for playlist_id,playlist_data in playlist_data.items():
-            for track_data in playlist_data['tracks']['items']:
+        for playlist_id,play_data in playlist_data.items():
+            for track_data in play_data[0]['items']:
                 for artist in track_data['track']['artists']:
                     tracked_bands.append(artist['name'])
                     print(artist['name'])
-                    time.sleep(0.1)
+                    time.sleep(0.01)
         print(set(tracked_bands),len(set(tracked_bands)))
         return set(tracked_bands)
 
 if __name__ == '__main__':
     d =SpotifyIntegration('1214002279')
-    d()
+    e = d()
+    playlists = next(e)
+    e.send(playlists)
