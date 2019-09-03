@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup as soup
 from geopy import geocoders
 import json
+import datetime
 
 import Spotify_API_Integration
 
@@ -29,7 +30,7 @@ class LocatorSetup:
         should be called directly, if needed."""
         try:
             user_settings = open('user_settings', 'r')
-        except:
+        except FileNotFoundError:
             if True:
                 self.state_pairs_find()
                 self.state_abbreviation_associations()
@@ -89,7 +90,7 @@ class LocatorSetup:
                  'state_to_abbreviation':self.state_to_abbreviation,
                  'abbreviation_to_state':self.abbreviation_to_state,
                  'bands':self.bands,
-                'spotify_id':self.spotify_user_id}
+                'spotify_id':self.spotify_user_id,
+                'last_checked':None}
         with open('user_settings','w') as settings:
             json.dump(data,settings)
-        return 'None' # Necessary to avoid a StopIteration error

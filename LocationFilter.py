@@ -1,6 +1,6 @@
 
 import json as json
-from geopy import geocoders,distance
+from geopy import geocoders,distance,exc as geopy_exc
 import requests
 from time import sleep
 
@@ -46,14 +46,21 @@ class LocationFilter:
     def filter_by_range(self,isvalidlocation):
         """Further filters out results to be within an arbitrary geographic distance. Note that this uses
         a shortest-line method of finding distance and does not account for road layout (or bodies of water)"""
-        concertloc = geocoders.Nominatim(user_agent="testing_location_find_10230950239").geocode(isvalidlocation,True)
-        concertloc = (concertloc.latitude,concertloc.longitude)
-        # TODO update to allow for user input of maximum range
-        valid_range = 200 # miles
-        dist = distance.distance(self.user_location[1],concertloc).miles
-        print(f'Finding geographic distance between {self.user_location} and {concertloc}')
-        sleep(5)
-        return False if dist > valid_range else concertloc
+        try:
+            concertloc = geocoders.Nominatim(user_agent="testing_location_find_10230950239").geocode(isvalidlocation,True)
+        except geopy_exc.GeocoderTimedOut:
+            print('Locator timed out, waiting 30s before continuing')
+            sleep(30)
+        else:
+            if concertloc:
+                concertloc = (concertloc.latitude,concertloc.longitude)
+                # TODO update to allow for user input of maximum range
+                valid_range = 200 # miles
+                dist = distance.distance(self.user_location[1],concertloc).miles
+                print(f'Finding geographic distance between {self.user_location} and {concertloc}')
+                sleep(5)
+                return False if dist > valid_range else concertloc
+            else: return False
 
 
         # alternate method for getting distances, currently excluded in the interest of not potentially abusing a free service

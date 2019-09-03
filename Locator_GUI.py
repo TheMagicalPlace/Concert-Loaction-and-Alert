@@ -2,9 +2,8 @@ from tkinter import *
 from time import sleep
 import Spotify_API_Integration as spot
 from InitialSetup import LocatorSetup
-
-
-
+from ConcertScraper import ConcertFinder as finder
+import json
 
 class StartupInterface():
     """Initializes required user data on first time use"""
@@ -84,6 +83,7 @@ class FirstTimeStartup:
         def spotint_no_button(event):
             print('no registered')
             spotint.destroy()
+            self.manual_band_input(startup)
             pass
 
         spotint = Frame(startup)
@@ -167,6 +167,7 @@ class FirstTimeStartup:
             except StopIteration:
                 pass
             wait.destroy()
+            self.concert_lookup(startup)
 
 
 
@@ -181,6 +182,48 @@ class FirstTimeStartup:
         for band in artists:
             spot_selbands_choices.insert(END,band)
 
+    #Only this method is run for manual input
+
+    def manual_band_input(self,startup):
+        """For manual entry of bands to track, YMMV. Also this is just a copy of message 2 in terms of code"""
+        def message2_button(event):
+            val = band_input.get()
+            print(val)
+            self.user_data_setup.send('Not Given')
+            self.user_data_setup.send(val)
+            band_in_frame.destroy()
+            self.concert_lookup(startup)
+
+        band_in_frame = Frame(startup)
+        man_imput_2text = 'Input each band you would like to track, seperated by commas'
+        message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
+        band_input = Entry(band_in_frame)
+        band_input_button = Button(band_in_frame)
+        band_input_button.bind('<Button-1>', message2_button)
+        startup.update()
+        message2.pack(), band_input.pack(), band_input_button.pack()
+        band_in_frame.pack()
+
+    def concert_lookup(self,startup):
+
+        def lookup_yes_action():
+            lookup.destroy()
+            concert_finder = finder()
+            concert_finder()
+            print('Done!')
+
+        def lookup_no_action():
+            pass
+
+        lookup = Frame(startup)
+        lookup_text = Label(lookup,text='Would you like to find concert dates now? Note that this obviously required'
+                                        'an internet connection, and may take a while in cases where a large'
+                                        'number of bands are tracked')
+        lookup_button_yes=Button(lookup,text='Yes',command=lookup_yes_action)
+        lookup_button_no = Button(lookup,text='No',command=lookup_no_action)
+        lookup_text.pack(),lookup_button_yes.pack(),lookup_button_no.pack()
+        lookup.pack()
+
 
 
 if __name__ == '__main__':
@@ -191,4 +234,12 @@ if __name__ == '__main__':
 
     #test.first_time_startup_events(s)
     uid = '1214002279'
-    FirstTimeStartup(s)
+
+    try:
+        with open('user_settings','r') as usr:
+            print(json.load(usr)['bands'])
+    except:
+        FirstTimeStartup(s)
+    FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
+    #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
+    mainloop()

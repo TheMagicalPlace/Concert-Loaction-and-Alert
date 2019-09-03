@@ -68,18 +68,19 @@ class SpotifyIntegration:
                 results[playlist['name']].append(tracks)
                 while tracks['next']:
                     tracks = (self.sp.next(tracks))
-                    results[playlist['name']]+=tracks
+                    results[playlist['name']].append(tracks)
         return results
 
     def log_bands(self,playlist_data):
         """Compiles a list of the all the artists appearing in the selected playlists"""
         tracked_bands = []
         for playlist_id,play_data in playlist_data.items():
-            for track_data in play_data[0]['items']:
-                for artist in track_data['track']['artists']:
-                    tracked_bands.append(artist['name'])
-                    print(artist['name'])
-                    time.sleep(0.01)
+            for track_data in play_data:
+                for tdata in track_data['items']:
+                    for artist in tdata['track']['artists']:
+                        tracked_bands.append(artist['name'])
+                        print(artist['name'])
+                        time.sleep(0.01)
         print(set(tracked_bands),len(set(tracked_bands)))
         return set(tracked_bands)
 
@@ -87,4 +88,4 @@ if __name__ == '__main__':
     d =SpotifyIntegration('1214002279')
     e = d()
     playlists = next(e)
-    e.send(playlists)
+    e.send({'a':playlists['Offline']})

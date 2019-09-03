@@ -9,7 +9,7 @@ import sqlite3 as sqlite
 from LocationFilter import LocationFilter
 from pathlib import Path
 import json as json
-
+import datetime
 
 class ConcertFinder:
 
@@ -37,7 +37,7 @@ class ConcertFinder:
         path = Path('./concert_db.db')
         try:
             assert path.exists() is True
-            self.concert_database = sqlite.connect('concert_db.db')
+            self.concert_database = sqlite.connect('concert_db.db',detect_types=sqlite.PARSE_DECLTYPES|sqlite.PARSE_COLNAMES)
         except AssertionError:
             self.concert_database = sqlite.connect('concert_db.db')
 
@@ -54,25 +54,42 @@ class ConcertFinder:
                 datestr = str(*date[0].attrs.values())
                 date_time_list = re.findall(self.ymd_format,datestr)+re.findall(self.hms_format,datestr) \
                     if re.findall(self.hms_format,datestr) else re.findall(self.ymd_format,datestr)+['Not Specified']
+
+                # Converting to a datetime.date object to simplify date checking for SQL
+                date_time_list[0] = datetime.date.fromisoformat(date_time_list[0])
                 if date[0].getText() in self.concerts.keys():
                     return
                 elif concert_dates is not None:
-                    if date_time_list[0] in concert_dates:
+                    if date_time_list[0].isoformat() in concert_dates:
                         continue
+
+
+
                 self.concerts[date[0].getText()].append(date_time_list)
                 location = concert.select('p[class="location"]')
                 wsp = re.compile(r'(?:\s)+(\S+|[ ,]?)',re.MULTILINE.DOTALL)
                 location = " ".join(wsp.findall(location[0].getText())[1:])
                 formatted_location = ", ".join(location.split(', ')[1:])
-                location = location if self.lcfilter(formatted_location) else 'Out of Range'
-                self.concerts[date[0].getText()].append(location)
+                self.concerts[date[0].getText()].append(formatted_location)
+                in_range = True if self.lcfilter(formatted_location) else 'Out of Range'
+                self.concerts[date[0].getText()].append(in_range)
 
     def _band_info_write(self,band,cur):
         """Takes the isolated info from the website search and saves it to the database"""
         # TODO convert to UTC and input it into the database via sqlite's builtins for the time module
-        for keys,vals in self.concerts.items():
-            cur.execute(f"INSERT INTO {self.banddb[band]} VALUES (?,?,?)",(vals[0][0],vals[1],vals[0][1]))
+        # TODO reformat database to keep track of distance & not overwrite location
 
+
+        for keys,vals in self.concerts.items():
+            'the format for enteries is as follows (Date of concert,location of concert (Venue,City,State),Distance to' \
+            'location (if applicable),time of concert (if avalible)'
+            try:
+                cur.execute(f"INSERT INTO {self.banddb[band]} VALUES (?,?,?,?,?)",(vals[0][0],vals[1],'Not Implimented Yet',vals[0][1],vals[2]))
+            except sqlite.OperationalError :
+                cur.execute(f'DROP TABLE {self.banddb[band]}')
+                cur.execute(f"CREATE TABLE {self.banddb[band]} (Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
+                cur.execute(f"INSERT INTO {self.banddb[band]} VALUES (?,?,?,?,?)",
+                            (vals[0][0], vals[1], 'Not Implimented Yet', vals[0][1], vals[2]))
     def band_iterator(self):
         """Iterates through all of the bands given in the JSON file"""
 
@@ -80,25 +97,25 @@ class ConcertFinder:
             with self.concert_database as cdb:
                 self.concerts = defaultdict(list)
                 cur = cdb.cursor()
-                self.banddb[band] = re.sub(r'[\[|\-*/<>,=~!^()\]]', '', self.banddb[band])
+                self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
                 try:
                     concert_dates = [cdate[0] for cdate in cur.execute(f'SELECT Date FROM {self.banddb[band]}').fetchall()]
                     self._website_search_songkick(band,concert_dates)
                 except sqlite.OperationalError:
-                    cur.execute(f"CREATE TABLE {self.banddb[band]} (Date TEXT,Location TEXT,Time TEXT)")
+                    cur.execute(f"CREATE TABLE {self.banddb[band]} (Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
                     self._website_search_songkick(band)
                 self._band_info_write(band,cur)
 
 
 
+if __name__ == '__main__':
+    print(repr('!'))
+    test = ConcertFinder()
+    test.band_iterator()
 
-print(repr('!'))
-test = ConcertFinder()
-test.band_iterator()
-
-#test.band_info_sort()
-#test._website_search_songkick()
-#test._band_info_write()
+    #test.band_info_sort()
+    #test._website_search_songkick()
+    #test._band_info_write()
 
 
 
