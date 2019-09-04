@@ -27,8 +27,6 @@ class SpotifyIntegration:
 
     def __call__(self, *args, **kwargs):
 
-
-
         secret = 'c1710a69f80c405d9ecad0eb1c6f548d'
         client_id ='ce4091c720c04087ad60ed054ffd9760'
 
@@ -38,7 +36,6 @@ class SpotifyIntegration:
         token = util.prompt_for_user_token(self.uid, f'playlist-read-private', redirect_uri='http://localhost/',
                                            client_secret='c1710a69f80c405d9ecad0eb1c6f548d', client_id=self.client_id)
         self.sp = spotipy.Spotify(auth=token)
-
         #What does this do?
         self.sp.trace = False
 
@@ -55,7 +52,6 @@ class SpotifyIntegration:
         keyed to each playlist name
         """
         results = defaultdict(list)
-
         # Loops through all of a users playlists
         for playlist in playlists['items']:
             if playlist['owner']['id'] == self.uid: # the auth token is limited to reading only user-owned playlists

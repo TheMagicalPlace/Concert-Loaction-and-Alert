@@ -30,6 +30,12 @@ class ConcertFinder:
         self._setUp()
 
     def __call__(self, *args, **kwargs):
+        with open('user_settings', 'r') as settings:
+            data = json.load(settings)
+            data['last_checked'] = datetime.date.today().isoformat()
+        with open('user_settings','w') as settings:
+            json.dump(data,settings)
+
         self.band_iterator()
 
     def _setUp(self):
@@ -37,7 +43,7 @@ class ConcertFinder:
         path = Path('./concert_db.db')
         try:
             assert path.exists() is True
-            self.concert_database = sqlite.connect('concert_db.db',detect_types=sqlite.PARSE_DECLTYPES|sqlite.PARSE_COLNAMES)
+            self.concert_database = sqlite.connect('concert_db.db')
         except AssertionError:
             self.concert_database = sqlite.connect('concert_db.db')
 
@@ -46,8 +52,9 @@ class ConcertFinder:
         print(band)
         for page in range(1,5):
 
-            yeet = requests.get(f'https://www.songkick.com/search?page={page}&per_page=10&query={self.bandwb[band]}&type=upcoming')
-            concpage = bs4.BeautifulSoup(yeet.text)
+            params = {'page':page,'per_page':15,'query':self.bandwb[band],'type':'upcoming'}
+            yeet = requests.get(f'https://www.songkick.com/search',params=params,timeout=5)
+            concpage = bs4.BeautifulSoup(yeet.text,features="html.parser")
             concpage = concpage.select('li[class="concert event"]')
             for concert in concpage:
                 date = concert.select('time[datetime]')
@@ -62,9 +69,6 @@ class ConcertFinder:
                 elif concert_dates is not None:
                     if date_time_list[0].isoformat() in concert_dates:
                         continue
-
-
-
                 self.concerts[date[0].getText()].append(date_time_list)
                 location = concert.select('p[class="location"]')
                 wsp = re.compile(r'(?:\s)+(\S+|[ ,]?)',re.MULTILINE.DOTALL)
@@ -80,7 +84,7 @@ class ConcertFinder:
         # TODO reformat database to keep track of distance & not overwrite location
 
 
-        for keys,vals in self.concerts.items():
+        for _,vals in self.concerts.items():
             'the format for enteries is as follows (Date of concert,location of concert (Venue,City,State),Distance to' \
             'location (if applicable),time of concert (if avalible)'
             try:
@@ -102,14 +106,14 @@ class ConcertFinder:
                     concert_dates = [cdate[0] for cdate in cur.execute(f'SELECT Date FROM {self.banddb[band]}').fetchall()]
                     self._website_search_songkick(band,concert_dates)
                 except sqlite.OperationalError:
-                    cur.execute(f"CREATE TABLE {self.banddb[band]} (Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
+                    cur.execute(f"CREATE TABLE {self.banddb[band]} "
+                                f"(Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
                     self._website_search_songkick(band)
                 self._band_info_write(band,cur)
 
 
 
 if __name__ == '__main__':
-    print(repr('!'))
     test = ConcertFinder()
     test.band_iterator()
 

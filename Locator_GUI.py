@@ -1,9 +1,11 @@
 from tkinter import *
 from time import sleep
 import Spotify_API_Integration as spot
-from InitialSetup import LocatorSetup
-from ConcertScraper import ConcertFinder as finder
+from InitialSetup import LocatorSetup,LocatorMain
+from ConcertScraper import ConcertFinder as CFinder
 import json
+import threading
+import datetime
 
 class StartupInterface():
     """Initializes required user data on first time use"""
@@ -21,6 +23,7 @@ class FirstTimeStartup:
     """Runs through the first time setup GUI"""
     def __init__(self,parent):
         self.spotifyapp = None
+        self.root = parent
         self.user_data_setup = LocatorSetup()
         self.user_data_setup = self.user_data_setup()
 
@@ -29,6 +32,7 @@ class FirstTimeStartup:
         try:
             next(self.user_data_setup)
         except StopIteration:
+            parent.destroy()
             return
         else:
             self.message1(parent)
@@ -208,12 +212,13 @@ class FirstTimeStartup:
 
         def lookup_yes_action():
             lookup.destroy()
-            concert_finder = finder()
+            concert_finder = CFinder()
             concert_finder()
             print('Done!')
 
         def lookup_no_action():
             pass
+            startup.destroy()
 
         lookup = Frame(startup)
         lookup_text = Label(lookup,text='Would you like to find concert dates now? Note that this obviously required'
@@ -224,22 +229,44 @@ class FirstTimeStartup:
         lookup_text.pack(),lookup_button_yes.pack(),lookup_button_no.pack()
         lookup.pack()
 
+def activation_delay():
+    '''This method is used to automatically update the upcoming concerts & is run on a delayed timer to
+    run ~ 30 minutes after startup (or if the application is open for >24 hours, once every 24 hours'''
+    with open('user_settings','r') as settings:
+        last_checked = json.load(settings)['last_checked']
+    if last_checked != datetime.date.today().isoformat():
+        concert_finder = CFinder()
+        concert_finder()
+        last_checked = datetime.date.today().isoformat()
 
 
 if __name__ == '__main__':
 
+    print('yeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeet')
+    try:
+        with open('user_settings','r+') as usr:
+            data = json.load(usr)
+            print(data['last_checked'])
+    except FileNotFoundError:
+        startup_gui = Tk()
+        FirstTimeStartup(startup_gui)
+        #startup_GUI = FirstTimeStartup(startup_gui)
+    except KeyError:
+        startup_gui = Tk()
+        FirstTimeStartup(startup_gui)
+        #startup_GUI = FirstTimeStartup(startup_gui)
+    else:
+        concert_db_update = threading.Timer(1800, activation_delay)
+        concert_db_update.start()
 
-    test = StartupInterface()
-    s = Tk()
+
+
+
 
     #test.first_time_startup_events(s)
     uid = '1214002279'
 
-    try:
-        with open('user_settings','r') as usr:
-            print(json.load(usr)['bands'])
-    except:
-        FirstTimeStartup(s)
-    FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
+    #FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
     #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
-    mainloop()
+
+

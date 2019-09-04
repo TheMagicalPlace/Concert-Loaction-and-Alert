@@ -10,6 +10,13 @@ import Spotify_API_Integration
 class LocatorSetup:
 
     def __init__(self):
+        self.state_pairs = {}
+        self.abbreviation_to_state = {}
+        self.state_to_abbreviation = {}
+        self.user_location = [None, None]
+        self.bands = []
+        self.concert_notification_range = 2
+        self.last_checked = None
         try:
             with open('user_settings','r') as settings:
                 data = json.load(settings)
@@ -17,30 +24,23 @@ class LocatorSetup:
                     exec(f'self.{key} = {value}')
 
         except FileNotFoundError:
-            self.state_pairs = {}
-            self.abbreviation_to_state = {}
-            self.state_to_abbreviation = {}
-            self.user_location = [None,None]
-            self.bands = []
+            pass
 
 
     def __call__(self):
         """If the user_settings file already exists this does nothing, but otherwise gets the required
         user info and saves to to a JSON file. Note this should only ever be called by the GUI, individual methods
         should be called directly, if needed."""
-        try:
-            user_settings = open('user_settings', 'r')
-        except FileNotFoundError:
-            if True:
-                self.state_pairs_find()
-                self.state_abbreviation_associations()
-                location = yield
-                self.user_location_set(location)
-                self.spotify_user_id = yield
-                bands = yield
-                self.get_bands(bands)
-                yield
-                self.save_data()
+
+        self.state_pairs_find()
+        self.state_abbreviation_associations()
+        location = yield
+        self.user_location_set(location)
+        self.spotify_user_id = yield
+        bands = yield
+        self.get_bands(bands)
+        yield
+        self.save_data()
 
 
 
@@ -78,7 +78,6 @@ class LocatorSetup:
             self.user_location = ['Not Specified',('Not Specified','Not Specified')]
 
     def get_bands(self,bands):
-        # TODO - this is redundant, just set self.bands to what's being yielded during the call
         """ Creating a list of bands for which concert info is wanted"""
         for band in bands:
             self.bands.append(band)
@@ -91,6 +90,46 @@ class LocatorSetup:
                  'abbreviation_to_state':self.abbreviation_to_state,
                  'bands':self.bands,
                 'spotify_id':self.spotify_user_id,
-                'last_checked':None}
+                'last_checked':self.last_checked,
+                'concert_notification_range':self.concert_notification_range} # weeks, default time until concert to present notifications
         with open('user_settings','w') as settings:
             json.dump(data,settings)
+
+
+class LocatorMain(LocatorSetup):
+    ''' This class is essentially a container for all the operations required by the GUI, with
+    some stuff recycled from the class that is used for first time setup (LocatorSetup). Notable differences include
+    that the class itself is not callable, as all methods are called directly by the corresponding GUI element'''
+
+
+    def __call__(self):
+        pass # Not Callable
+
+    def delete_bands(self):
+        '''Deletes band tracking for bands selected by the user'''
+        self.bands = yield self.bands
+        self.save_data()
+
+    def update_user_location(self,location):
+        '''Changes user location'''
+        # TODO - currently setting it like this wont update location for already tracked cocnerts, either
+        # TODO find a way to track multiple or dump all the tables & start fresh
+        super().user_location_set(location)
+        self.save_data()
+
+    def remove_spotify_tracking(self):
+        self.spotify_user_id = None
+        self.save_data()
+
+    def notification_range_update(self,_range):
+        'changes the range of dates for which notifications will be given'
+        self.concert_notification_range = _range
+        self.save_data()
+
+    def manual_update_bands(self,bands):
+        super().get_bands(bands)
+        self.save_data()
+
+    def update_last_checked(self):
+        self.last_checked = datetime.date.today().isoformat()
+        self.save_data()
