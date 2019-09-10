@@ -16,7 +16,10 @@ class LocationFilter:
         with open('user_settings', 'r') as settings:
             data = json.load(settings)
             for key, value in data.items():
-                exec(f'self.{key} = {value}')
+                if key == 'last_checked':
+                    self.last_checked = value
+                else:
+                    exec(f'self.{key} = {value}')
         home_state = [state for abbv,state in self.abbreviation_to_state.items()
                       if abbv in self.user_location[0] or state in self.user_location[0]]
         self.adjacent = [self.state_to_abbreviation[state.split(' ')[0]] for state in self.state_pairs[home_state[0]]+home_state]

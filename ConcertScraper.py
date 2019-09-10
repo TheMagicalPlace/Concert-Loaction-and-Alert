@@ -53,7 +53,11 @@ class ConcertFinder:
         for page in range(1,5):
 
             params = {'page':page,'per_page':15,'query':self.bandwb[band],'type':'upcoming'}
-            yeet = requests.get(f'https://www.songkick.com/search',params=params,timeout=5)
+            try:
+                yeet = requests.get(f'https://www.songkick.com/search',params=params,timeout=5)
+            except requests.exceptions.ConnectionError as timeout:
+                print(timeout)
+                continue
             concpage = bs4.BeautifulSoup(yeet.text,features="html.parser")
             concpage = concpage.select('li[class="concert event"]')
             for concert in concpage:

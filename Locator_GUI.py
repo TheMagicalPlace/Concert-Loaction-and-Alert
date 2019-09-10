@@ -6,7 +6,7 @@ from ConcertScraper import ConcertFinder as CFinder
 import json
 import threading
 import datetime
-
+import os
 class StartupInterface():
     """Initializes required user data on first time use"""
     def __init__(self):
@@ -241,7 +241,7 @@ def activation_delay():
 
 
 if __name__ == '__main__':
-
+    os.chdir('/home/themagicalplace/PycharmProjects/ConcertLoactor')
     print('yeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeet')
     try:
         with open('user_settings','r+') as usr:
