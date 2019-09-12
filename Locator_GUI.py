@@ -1,22 +1,15 @@
-from tkinter import *
+
 from time import sleep
+import datetime
+import re
 import Spotify_API_Integration as spot
 from InitialSetup import LocatorSetup,LocatorMain
 from ConcertScraper import ConcertFinder as CFinder
+from tkinter import *
+import sqlite3 as sqlite
 import json
+from copy import copy
 import threading
-import datetime
-import os
-class StartupInterface():
-    """Initializes required user data on first time use"""
-    def __init__(self):
-        self.spotifyapp = None
-
-        try:
-            with open('user_settings', 'r') as settings:
-                pass
-        except FileNotFoundError:
-            print('File Not Found')
 
 class FirstTimeStartup:
     spotifyapp = None
@@ -229,35 +222,179 @@ class FirstTimeStartup:
         lookup_text.pack(),lookup_button_yes.pack(),lookup_button_no.pack()
         lookup.pack()
 
-def activation_delay():
-    '''This method is used to automatically update the upcoming concerts & is run on a delayed timer to
-    run ~ 30 minutes after startup (or if the application is open for >24 hours, once every 24 hours'''
-    with open('user_settings','r') as settings:
-        last_checked = json.load(settings)['last_checked']
-    if last_checked != datetime.date.today().isoformat():
-        concert_finder = CFinder()
-        concert_finder()
-        last_checked = datetime.date.today().isoformat()
+class Main_GUI:
+    """The main GUI window for the program, this class is only responsible for the appearance
+    of the application, with all of the actual heavy lifting offloaded to the other files. I've tried to comment where
+    this happens such that it should hopefully be clear when the other files are being called"""
+
+    def __init__(self,parent):
+        """Initializes all the important stuff used in the window. Notable things initialized here include the
+        'IOsetter' which is an instance that is used to modify and update the 'user_settings' file based on manual input.
+        The class for this instance can be found in InitialSetup.py as LocatorMain"""
+        self.IOsetter = LocatorMain()
+        self.root = parent
+        self.concert_database = sqlite.connect('concert_db.db')
+        with open('user_settings','r') as settings:
+            data = json.load(settings)
+            self.bands = data['bands']
+
+        # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
+        self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
+        self.banddb = {re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band]):band for band in self.bands}
+
+    def __call__(self):
+        """Initializes the main window, which includes the menu as well as the information for the upcoming concerts"""
+        menu = Menu(self.root)
+        self.root.config(menu=menu)
+
+        # Spotify setting menu bar
+        spotmenu = Menu(menu)
+        menu.add_cascade(label='Spotify Settings',menu=spotmenu)
+        spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
+
+        # Manual initiation of concert lookup
+        concmenu = Menu(menu)
+        menu.add_cascade(label='Concert Search',menu=concmenu)
+        concmenu.add_command(label='Search for upcoming concerts',command=self.concert_update)
+
+        # Menu for addition/removal of bands manually
+        manmenu = Menu(menu)
+        menu.add_cascade(label='Add/Remove Artists',menu=manmenu)
+        manmenu.add_command(label='Add Artists',command=self.add_artists)
+
+        # Getting and formatting the upcoming concert info from the database
+        space_frame = Frame(self.root,width=768,height=20)
+        concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE)
+        space_frame.pack()
+        concert_frame.pack()
+        Frame(self.root,width=768,height=20).pack()
+        with self.concert_database as cdb:
+            cur = cdb.cursor()
+            up = list(cur.execute('SELECT * FROM Upcoming ORDER BY Date'))
+            up.insert(0, ['Band', 'Location', 'Time', 'Date', 'Days until concert'])
+            framedimensions = [max([len(j) for j in i]) for i in list(zip(*copy(up)))]
+            up = list(up)
+        self.displaybar(concert_frame,up,framedimensions)
+
+    def displaybar(self,parent,iter_data,framedimensions):
+        """This is used to display & format the concert data in a (sort of) aesthetic format"""
+        for row in iter_data:
+            r = iter_data.index(row)
+            if r == 0: Label(parent,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
+            else: r+=1
+            for val in row:
+                if row.index(val) == 0:
+                    try:
+                        value = self.banddb[val]
+                    except KeyError:
+                        print(val)
+                        value = val
+                else: value = val
+                Label(parent,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+
+    def spotify_update(self):
+        """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
+        top = Toplevel()
+        SpotifyUpdate(top)
+
+    def concert_update(self):
+        """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
+        finder = CFinder()
+        find = threading.Thread(target=finder())
+        find.start()
+
+    def add_artists(self):
+        """Manual addition of artists to user_settings using the IOsetter mentioned in the __init__ docstring"""
+        top = Toplevel()
+
+        def message2_button(event,parent):
+            bands = band_input.get()
+            print(bands)
+            self.IOsetter.add_bands(bands)
+            top.destroy()
 
 
-if __name__ == '__main__':
-    os.chdir('/home/themagicalplace/PycharmProjects/ConcertLoactor')
-    print('yeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeet')
-    try:
-        with open('user_settings','r+') as usr:
-            data = json.load(usr)
-            print(data['last_checked'])
-    except FileNotFoundError:
-        startup_gui = Tk()
-        FirstTimeStartup(startup_gui)
-        #startup_GUI = FirstTimeStartup(startup_gui)
-    except KeyError:
-        startup_gui = Tk()
-        FirstTimeStartup(startup_gui)
-        #startup_GUI = FirstTimeStartup(startup_gui)
-    else:
-        concert_db_update = threading.Timer(1800, activation_delay)
-        concert_db_update.start()
+        band_in_frame = Frame(top)
+        man_imput_2text = 'Input each band you would like to track, seperated by commas'
+        message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
+        band_input = Entry(band_in_frame)
+        band_input_button = Button(band_in_frame)
+        band_input_button.bind('<Button-1>', message2_button)
+        top.update()
+        message2.pack(), band_input.pack(), band_input_button.pack()
+        band_in_frame.pack()
+
+    def remove_artists(self):
+        pass
+
+    def update_location(self):
+        pass
+
+class SpotifyUpdate:
+    """GUI class for running through artist selection via spotify, this is essentially the same as the
+    related methods found in the FirstTimeStartup class, but slightly modified to be able to run independently of
+    the sequential order used in FirstTimeStartup"""
+    def __init__(self,parent):
+        self.root = parent
+        with open('user_settings','r') as settings:
+            data = json.load(settings)
+            user_id = data['spotify_id']
+        fr = Label(self.root,text='Updating Playlists - Please Wait')
+        fr.pack()
+        self.root.update()
+        self.spotifyapp = spot.SpotifyIntegration(user_id)
+        self.spotifyapp = self.spotifyapp()
+        playlists = next(self.spotifyapp)
+        fr.destroy()
+        self.spotify_select_playlists(playlists)
+
+    def spotify_select_playlists(self,playlists):
+        """Gets a list of artists from the playlist"""
+
+        def spot_selplay_continue_button(event,playlists=playlists):
+            selection = [spot_selplay_choices.get(i) for i in spot_selplay_choices.curselection()]
+            playlists = {name:data for name,data in playlists.items() if name in selection}
+            spot_selplay.destroy()
+            self.root.update()
+            artists = self.spotifyapp.send(playlists)
+            self.spotify_select_artists(artists)
+
+        spot_selplay = Frame(self.root)
+        spot_selplay_desc = Label(spot_selplay,text = 'Select which playlists you would like to track artists from',wraplength=500)
+        spot_selplay_choices =Listbox(spot_selplay,selectmode=MULTIPLE)
+        spot_selplay_button =Button(spot_selplay,text='Continue')
+        spot_selplay_button.bind('<Button-1>',spot_selplay_continue_button)
+
+        spot_selplay_desc.pack(),spot_selplay_choices.pack(),spot_selplay_button.pack()
+        spot_selplay.pack()
+
+        for key,_ in playlists.items():
+            spot_selplay_choices.insert(END,key)
+
+    def spotify_select_artists(self,artists):
+        """Select which artists are to be tracked"""
+        def spot_selbands_continue_button(event,bands=artists):
+            tracked = [spot_selbands_choices.get(i) for i in spot_selbands_choices.curselection()]
+            if tracked:
+                tracked_bands = [name for name in bands if name in tracked]
+            else:
+                tracked_bands = [name for name in list(bands)]
+            spot_selbands.destroy()
+            wait = Label(self.root,text='Saving - Please Wait')
+            wait.pack()
+            self.root.update()
+            self.root.destroy()
+
+        spot_selbands = Frame(self.root)
+        spot_selbands_desc = Label(spot_selbands,text='Select which bands you would like to follow or just press Done '
+                                                      'to track all listed bands')
+        spot_selbands_choices = Listbox(spot_selbands,selectmode=MULTIPLE)
+        spot_selbands_button = Button(spot_selbands,text='Done')
+        spot_selbands_button.bind('<Button-1>',spot_selbands_continue_button)
+        spot_selbands_desc.pack(),spot_selbands_choices.pack(),spot_selbands_button.pack()
+        spot_selbands.pack()
+        for band in artists:
+            spot_selbands_choices.insert(END,band)
 
 
 
@@ -270,3 +407,8 @@ if __name__ == '__main__':
     #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
 
 
+if __name__ == '__main__':
+    app = Tk()
+    main_test = Main_GUI(app)
+    main_test()
+    app.mainloop()

@@ -21,7 +21,10 @@ class LocatorSetup:
             with open('user_settings','r') as settings:
                 data = json.load(settings)
                 for key,value in data.items():
-                    exec(f'self.{key} = {value}')
+                    if key == 'last_checked':
+                        self.last_checked = value
+                    else:
+                        exec(f'self.{key} = {value}')
 
         except FileNotFoundError:
             pass
@@ -126,7 +129,7 @@ class LocatorMain(LocatorSetup):
         self.concert_notification_range = _range
         self.save_data()
 
-    def manual_update_bands(self,bands):
+    def add_bands(self,bands):
         super().get_bands(bands)
         self.save_data()
 

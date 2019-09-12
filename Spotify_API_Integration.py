@@ -81,7 +81,12 @@ class SpotifyIntegration:
         return set(tracked_bands)
 
 if __name__ == '__main__':
-    d =SpotifyIntegration('1214002279')
-    e = d()
-    playlists = next(e)
-    e.send({'a':playlists['Offline']})
+
+
+    with open('user_settings','r') as settings:
+        data = json.load(settings)
+        user_id = data['spotify_id']
+    spotify_update =SpotifyIntegration(user_id)
+    updater = spotify_update()
+    playlists = next(updater)
+    updater.send({'a':playlists['Offline']})
