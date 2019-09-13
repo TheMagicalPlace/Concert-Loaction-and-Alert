@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup as soup
 from geopy import geocoders
 import json
-import datetime
+
 
 class LocatorSetup:
 

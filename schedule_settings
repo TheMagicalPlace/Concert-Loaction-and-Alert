@@ -1,1 +1,1 @@
-{"init_on_startup": true, "web_scraper_delay": 1800, "gui_launch_delay": 3600}
+{"user": null, "init_on_startup": true, "web_scraper_delay": null, "gui_launch_delay": null}

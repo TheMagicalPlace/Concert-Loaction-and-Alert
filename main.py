@@ -26,6 +26,7 @@ if __name__ =='__main__':
     testing = False # Should be False except for testing and debugging
     os.chdir(os.getcwd())
 
+    print(sys.platform)
 
     try:
         with open('user_settings','r+') as usr:
