@@ -1,7 +1,5 @@
 
 from time import sleep
-import datetime
-import re
 import Spotify_API_Integration as spot
 from InitialSetup import LocatorSetup,LocatorMain
 from ConcertScraper import ConcertFinder as CFinder

@@ -5,8 +5,6 @@ from geopy import geocoders
 import json
 import datetime
 
-import Spotify_API_Integration
-
 class LocatorSetup:
 
     def __init__(self):

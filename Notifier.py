@@ -2,11 +2,9 @@ import json as json
 import sqlite3 as sqlite
 import time
 from datetime import timedelta,date as dt_date
-import threading
 from collections import defaultdict
 import re
 
-from crontab import CronTab
 
 class Notifications:
 
