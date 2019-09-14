@@ -23,8 +23,9 @@ class Notifications:
         try:
             with self.concert_database as cdb:
              cur = cdb.cursor()
-             cur.execute(f'DELETE FROM Upcoming WHERE date < {current_date}')
-        except sqlite.OperationalError:
+             cur.execute('DELETE FROM Upcoming WHERE Upcoming.date < :cdate',{'cdate':current_date})
+        except sqlite.OperationalError as error:
+            print(error)
             with self.concert_database as cdb:
                 cur = cdb.cursor()
                 cur.execute('CREATE TABLE Upcoming (band TEXT,location TEXT,time TEXT,date DATE, days_to TEXT)')
@@ -41,7 +42,7 @@ class Notifications:
         # Getting the data for concert entries already present in the Upcoming table to avoid inserting duplicates
         with self.concert_database as cdb:
             cur = cdb.cursor()
-            cur.execute(f'DELETE FROM Upcoming WHERE Upcoming.date < {current_date}')
+            cur.execute(f'DELETE FROM Upcoming WHERE Upcoming.date < :cdate',{'cdate':current_date})
             result = cur.execute('SELECT band,date FROM Upcoming').fetchall()
         [upcoming_events[band].append(date) for band,date in result]
 
@@ -54,7 +55,7 @@ class Notifications:
                 cur = cdb.cursor()
 
                 # Clearing out entries older than the current date
-                cur.execute(f'DELETE FROM {self.banddb[band]} WHERE Date < {current_date}')
+                cur.execute(f'DELETE FROM {self.banddb[band]} WHERE date < {current_date}')
                 concert_info = list(zip(*[(cdate[0],cdate[1],cdate[2],cdate[3],cdate[4]) for cdate in
                                           cur.execute(f'SELECT * FROM {self.banddb[band]}').fetchall()]))
 

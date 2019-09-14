@@ -11,17 +11,23 @@ import threading
 import sys
 import queue
 from scheduler_setup import *
-
+from scheduler_setup import *
 class TkinterEventSubprocess(threading.Thread):
-    def __init__(self, queue,name=None):
+
+
+    def __init__(self, queue,callable_instance,name=None):
         super().__init__()
         if name is not None:
             self.name = name
         self.queue = queue
-    def run(self):
-        concert_finder = CFinder()
-        concert_finder()
+        self.threaded_func = callable_instance
+    def run(self,*args):
+
+        thread_func = self.threaded_func()
+        thread_func()
         self.queue.put('Done')
+
+
 
 
 class FirstTimeStartup:
@@ -220,7 +226,7 @@ class FirstTimeStartup:
 
         def lookup_yes_action():
             lookup.destroy()
-            self.search_thread =TkinterEventSubprocess(self.queue,'yote').start()
+            self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
             self.add_to_startup()
 
         def lookup_no_action():
@@ -263,7 +269,7 @@ class FirstTimeStartup:
                                   'no issues with just manually updating as you go, for sake of ease I would reccomend '
                                   'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                   'delay from startup before concert data is updated from the web, and a one hour delay'
-                                  'before the window with the upcoming concerts is displayed' ).pack()
+                                  'before the window with the upcoming concerts is displayed' ,wraplength=500).pack()
             b1 = Button(master=frm,text='Use Default Settings',command=default_button)
             b2 = Button(master=frm,text='Custom Settings',command=custom_button)
             b3 = Button(master=frm,text='Disable Automatic Startup',command=disable_button)
@@ -347,7 +353,7 @@ class FirstTimeStartup:
         print(threading.active_count())
         print(threading.activeCount(),[ thr.name for thr in threading.enumerate()])
         thread_ids = [ thr.name for thr in threading.enumerate()]
-        if 'yote' not in thread_ids:
+        if 'concert-lookup-thread' not in thread_ids:
             b2.configure(state= 'disabled')
 
         b3 = Button(master=frm,text='Exit',command=self.root.destroy)
@@ -366,13 +372,11 @@ class Main_GUI:
         self.root = parent
         self.queue = queue.Queue()
         self.concert_database = sqlite.connect('concert_db.db')
-        with open('user_settings','r') as settings:
-            data = json.load(settings)
-            self.bands = data['bands']
-
+        self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
         self.banddb = {re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band]):band for band in self.bands}
+        self.scheduler = initialize_scheduler()
 
     def __call__(self):
         """Initializes the main window, which includes the menu as well as the information for the upcoming concerts"""
@@ -393,7 +397,13 @@ class Main_GUI:
         manmenu = Menu(menu)
         menu.add_cascade(label='Add/Remove Artists',menu=manmenu)
         manmenu.add_command(label='Add Artists',command=self.add_artists)
+        manmenu.add_command(label='Remove Artists',command=self.remove_artists)
+        manmenu.add_command(label='Resume tracking of Removed Artists', command=self.add_removed_artist)
 
+        setupmenu = Menu(menu)
+        menu.add_cascade(label='Startup Settings',menu=setupmenu)
+        setupmenu.add_command(label='Modify Startup Settings',command=self.add_to_startup)
+        setupmenu.add_command(label='View Startup Settings',command=self.view_startup_settings)
         # Getting and formatting the upcoming concert info from the database
         space_frame = Frame(self.root,width=768,height=20)
         concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE)
@@ -408,7 +418,23 @@ class Main_GUI:
             up = list(up)
         self.displaybar(concert_frame,up,framedimensions)
 
+
+
+        thread_ids = [ thr.name for thr in threading.enumerate()]
+        if 'concert-lookup-thread' not in thread_ids:
+            self.concmenu.entryconfig(1, state=DISABLED)
+            self.queue_check()
+
         self.root.mainloop()
+
+    def update_GUI_variables(self):
+        with open('user_settings','r') as settings:
+            data = json.load(settings)
+            for key,value in data.items():
+                if key == 'last_checked':
+                    self.last_checked = value
+                else:
+                    exec(f'self.{key} = {value}')
 
     def displaybar(self,parent,iter_data,framedimensions):
         """This is used to display & format the concert data in a (sort of) aesthetic format"""
@@ -431,19 +457,18 @@ class Main_GUI:
         top = Toplevel()
         SpotifyUpdate(top)
 
-    # TODO disable this button when the concert search from the initial setup is still running
     def concert_update(self):
         """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
-        finder = CFinder()
-        self.conc_find = TkinterEventSubprocess(self.queue,'concert-lookup-thread')
+        self.conc_find = TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread')
         self.conc_find.start()
         self.concmenu.entryconfig(1,state=DISABLED)
         self.queue_check()
 
     def queue_check(self):
-        if self.conc_find.is_alive():
+        thread_ids = [thr.name for thr in threading.enumerate()]
+        if 'concert-lookup-thread'  in thread_ids:
             print('waiting')
-            self.root.after(100,self.queue_check)
+            self.root.after(10000,self.queue_check)
         else:
             print('done!')
             self.concmenu.entryconfig(1,state=ACTIVE)
@@ -456,6 +481,7 @@ class Main_GUI:
             bands = band_input.get()
             print(bands)
             self.IOsetter.add_bands(bands)
+            self.update_GUI_variables()
             top.destroy()
 
 
@@ -470,11 +496,178 @@ class Main_GUI:
         band_in_frame.pack()
 
     def remove_artists(self):
-        pass
+        """Manual removal of artists to user_settings using the IOsetter mentioned in the __init__ docstring"""
+        top = Toplevel()
+
+        def button_event_listbox(bands=self.bands):
+            removed = [list_choices.get(i) for i in list_choices.curselection()]
+            if removed:
+                removed_bands = removed
+                self.IOsetter.remove_bands(removed_bands)
+
+            band_in_frame.destroy()
+            self.update_GUI_variables()
+            top.destroy()
+
+
+
+
+        band_in_frame = Frame(top)
+        frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
+        list_choices = Listbox(band_in_frame,selectmode=MULTIPLE)
+        frame_button_1 = Button(band_in_frame,text='Done',command=button_event_listbox)
+
+        frame_description.pack(),list_choices.pack(),frame_button_1.pack()
+        band_in_frame.pack()
+
+        for band in self.bands:
+            list_choices.insert(END,band)
+
+    def add_removed_artist(self):
+        """Re-adding tracking  of artists removed via self.remove_artist to user_settings using the IOsetter mentioned in the __init__ docstring"""
+        top = Toplevel()
+
+        def button_event_listbox(bands=self.bands):
+            removed = [list_choices.get(i) for i in list_choices.curselection()]
+            if removed:
+                removed_bands = removed
+                self.IOsetter.add_removed_bands(removed_bands)
+
+            band_in_frame.destroy()
+            wait = Label(self.root,text='Saving - Please Wait')
+            self.update_GUI_variables()
+            top.destroy()
+
+
+
+        band_in_frame = Frame(top)
+        frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
+        list_choices = Listbox(band_in_frame,selectmode=MULTIPLE)
+        frame_button_1 = Button(band_in_frame,text='Done',command=button_event_listbox)
+
+        frame_description.pack(),list_choices.pack(),frame_button_1.pack()
+        band_in_frame.pack()
+
+        for band in self.removed_bands:
+            list_choices.insert(END,band)
 
     def update_location(self):
-        pass
+        top = Toplevel()
+        def button_event():
+            location = location_input.get()
+            self.IOsetter.update_user_location(location)
+            top.destroy()
 
+        location_frame = Frame(top)
+        frame_input_text = 'Input the location you would like to track from.'
+        message2 = Label(location_frame, text=frame_input_text,wraplength=500)
+        location_input = Entry(location_frame)
+        location_input_button = Button(location_frame)
+        message2.pack(),location_input.pack(), location_input_button.pack()
+        location_frame.pack()
+
+    def add_to_startup(self):
+        top = Toplevel()
+        if self.scheduler.system != 'linux/mac':
+            top.destroy()
+            return
+
+        def default_button():
+            frm.destroy()
+            self.add_to_startup_default(top)
+
+        def custom_button():
+            frm.destroy()
+            self.add_to_startup_custom(top)
+
+        def disable_button():
+            frm.destroy()
+            self.scheduler.cron_enable(False)
+            top.destroy()
+
+        frm = Frame(top)
+
+        user_os = sys.platform
+        if user_os == 'linux':
+            Label(master=frm, text='This application is designed to make use of the cron scheduler to '
+                                   'automatically perform most of it\'s functions. While you *should* have'
+                                   'no issues with just manually updating as you go, for sake of ease I would reccomend '
+                                   'enabling it and setting the delay as desired. The default settings are a 30 minute'
+                                   'delay from startup before concert data is updated from the web, and a one hour delay'
+                                   'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
+            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
+            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
+            b1.pack(), b2.pack(), b3.pack()
+            frm.pack()
+
+    def add_to_startup_default(self,parent=None):
+
+        def cont_button():
+            usr = ent.get()
+            self.scheduler.cron_enable(True)
+            self.scheduler.cron_setup(usr)
+            parent.destroy()
+
+        cronfrm_default = Frame(parent)
+
+        Label(master=parent, text='Enter your linux username, i.e. usr in home/usr').pack()
+        ent = Entry(master=cronfrm_default )
+        ent.delete(0,END)
+        ent.insert(0,str(self.scheduler.user))
+        ent.pack()
+        Button(master=cronfrm_default, text='Continue', command=cont_button).pack()
+        cronfrm_default.pack()
+
+    def add_to_startup_custom(self,parent=None):
+
+        def cont_button_custom():
+            self.scheduler.cron_enable(True)
+            usr = entusr.get()
+            scraper_delay = entdelay1.get()
+            gui_delay = entdelay2.get()
+            schdl = SchedulerLinux()
+            schdl.cron_setup(usr, int(scraper_delay), int(gui_delay))
+            parent.destroy()
+
+        cronfrm_custom = Frame(parent)
+        cronfrm_custom.pack()
+        Label(master=cronfrm_custom, text='Enter your linux username, i.e. usr in home/usr').pack()
+        entusr = Entry(master=cronfrm_custom)
+        entusr.delete(0,END)
+        entusr.insert(0,self.scheduler.user)
+        entusr.pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+                                          'before the application updates concert data from the internet').pack()
+        entdelay1 = Entry(master=cronfrm_custom)
+        entdelay1.delete(0,END)
+        entdelay1.insert(0,str(self.scheduler.web_scraper_delay))
+        entdelay1.pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+                                          'before the window containing upcoming concert data is opened').pack()
+        entdelay2 = Entry(master=cronfrm_custom)
+        entdelay2.delete(0,END)
+        entdelay2.insert(0,str(self.scheduler.gui_launch_delay))
+        entdelay2.pack()
+        Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
+
+    def view_startup_settings(self):
+        scheduler = initialize_scheduler()
+        top = Toplevel()
+        main_frame = Frame(top)
+        if scheduler.init_on_startup:
+
+            Label(master=main_frame,text=f'Launch on startup: Enabled').pack()
+            Label(master=main_frame,text=f'Web Scraper offset : {scheduler.web_scraper_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'GUI Window offset: {scheduler.gui_launch_delay//60} Minutes after startup').pack()
+        else:
+            Label(master=main_frame,text='Launch on startup: Disabled').pack()
+            Label(master=main_frame,
+                  text=f'Web Scraper offset : Disabled').pack()
+            Label(master=main_frame,
+                  text=f'GUI Window offset: Disabled').pack()
+        Button(master=main_frame,text='Done',command=top.destroy).pack()
+        main_frame.pack()
 class SpotifyUpdate:
     """GUI class for running through artist selection via spotify, this is essentially the same as the
     related methods found in the FirstTimeStartup class, but slightly modified to be able to run independently of

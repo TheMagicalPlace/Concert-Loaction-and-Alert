@@ -15,6 +15,8 @@ class LocatorSetup:
         self.bands = []
         self.concert_notification_range = 2
         self.last_checked = None
+        self.removed_bands = []
+        self.spotify_id = None
         try:
             with open('user_settings','r') as settings:
                 data = json.load(settings)
@@ -37,7 +39,7 @@ class LocatorSetup:
         self.state_abbreviation_associations()
         location = yield
         self.user_location_set(location)
-        self.spotify_user_id = yield
+        self.spotify_id = yield
         bands = yield
         self.get_bands(bands)
         yield
@@ -78,10 +80,9 @@ class LocatorSetup:
         else:
             self.user_location = ['Not Specified',('Not Specified','Not Specified')]
 
-    def get_bands(self,bands):
+    def get_bands(self,bands=None):
         """ Creating a list of bands for which concert info is wanted"""
-        for band in bands:
-            self.bands.append(band)
+        [self.bands.append(band) for band in bands if band not in self.bands and band not in self.removed_bands]
 
     def save_data(self):
         "Saves user data to a JSON file"
@@ -90,9 +91,10 @@ class LocatorSetup:
                  'state_to_abbreviation':self.state_to_abbreviation,
                  'abbreviation_to_state':self.abbreviation_to_state,
                  'bands':self.bands,
-                'spotify_id':self.spotify_user_id,
+                'spotify_id':self.spotify_id,
                 'last_checked':self.last_checked,
-                'concert_notification_range':self.concert_notification_range} # weeks, default time until concert to present notifications
+                'concert_notification_range':self.concert_notification_range,# weeks, default time until concert to present notifications
+                'removed_bands':self.removed_bands}
         with open('user_settings','w') as settings:
             json.dump(data,settings)
 
@@ -128,6 +130,16 @@ class LocatorMain(LocatorSetup):
         self.save_data()
 
     def add_bands(self,bands):
+        super().get_bands(bands)
+        self.save_data()
+
+    def remove_bands(self,bands):
+        [self.removed_bands.append(band) for band in bands]
+        self.bands = [band for band in self.bands if band not in self.removed_bands]
+        self.save_data()
+
+    def add_removed_bands(self,bands):
+        [self.removed_bands.remove(band) for band in bands]
         super().get_bands(bands)
         self.save_data()
 

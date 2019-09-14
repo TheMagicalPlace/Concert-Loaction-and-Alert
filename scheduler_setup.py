@@ -3,19 +3,42 @@ from crontab import CronTab
 import json
 from os import getcwd
 
+def initialize_scheduler():
+    user_os = sys.platform
+    if user_os in ['linux','darwin']:
+        return SchedulerLinux()
+    elif user_os is 'win32':
+        pass
+    else:
+        return 'Unsupported Operating System'
+
+
 class SchedulerLinux:
+    system = 'linux/mac'
 
     def __init__(self):
         try:
             with open('schedule_settings','r') as schedule:
                 data = json.load(schedule)
                 for key,value in data.items():
-                    exec(f'self.{key} = {value}')
+                    if key == 'user':
+                        self.user = value
+                    else:
+                        exec(f'self.{key} = {str(value)}')
         except FileNotFoundError:
             self.init_on_startup = True
             self.web_scraper_delay = 1800
             self.gui_launch_delay = 3600
             self.user = None
+    def update(self):
+        with open('schedule_settings', 'r') as schedule:
+            data = json.load(schedule)
+            for key, value in data.items():
+                if key == 'user':
+                    self.user = value
+                else:
+                    exec(f'self.{key} = {str(value)}')
+
 
     def cron_enable(self,response):
         if response:
@@ -24,14 +47,15 @@ class SchedulerLinux:
             self.init_on_startup = False
             self.web_scraper_delay = None
             self.gui_launch_delay = None
-        if self.user is not None:
-            cron = CronTab(user=self.user)
-            for job in cron:
-                if job.comment == 'concert_location_and_alert':
-                    job.enable(False)
+            if self.user is not None:
+                cron = CronTab(user=self.user)
+                cron.remove_all(comment='concert_location_and_alert')
+                for job in cron:
+                    print(job)
         self.write_settings()
 
     def cron_setup(self,user,web_scraper_delay=1800,gui_launch_delay=3600):
+        self.user = user
         self.web_scraper_delay = web_scraper_delay
         self.gui_launch_delay = gui_launch_delay
         cron = CronTab(user=user)
@@ -47,12 +71,12 @@ class SchedulerLinux:
 
     def write_settings(self):
         with open('schedule_settings', 'w') as schedule:
-            sch = {'user':None,
-                   'init_on_startup': True,
+            sch = {'user':self.user,
+                   'init_on_startup': self.init_on_startup,
                    'web_scraper_delay': self.web_scraper_delay,
                    'gui_launch_delay': self.gui_launch_delay}
             json.dump(sch, schedule)
-
+        self.update()
 class SchedulerWindows:
     def __init__(self):
         pass
