@@ -12,23 +12,30 @@ import sys
 import queue
 from scheduler_setup import *
 from scheduler_setup import *
+
+stop_all_threads = False
+
 class TkinterEventSubprocess(threading.Thread):
 
 
-    def __init__(self, queue,callable_instance,name=None):
+    def __init__(self, queue,callable_instance,name=None,args=None):
         super().__init__()
         if name is not None:
             self.name = name
         self.queue = queue
         self.threaded_func = callable_instance
-    def run(self,*args):
 
-        thread_func = self.threaded_func()
-        thread_func()
-        self.queue.put('Done')
-
-
-
+    def run(self):
+        funcgen = self.threaded_func()
+        thread_func_gen = funcgen()
+        try:
+            while True:
+                next(thread_func_gen)
+                if stop_all_threads:
+                    print('thread ended due to shutdown')
+                    break
+        except GeneratorExit:
+            self.queue.put('Done')
 
 class FirstTimeStartup:
 
@@ -368,6 +375,7 @@ class Main_GUI:
         """Initializes all the important stuff used in the window. Notable things initialized here include the
         'IOsetter' which is an instance that is used to modify and update the 'user_settings' file based on manual input.
         The class for this instance can be found in InitialSetup.py as LocatorMain"""
+        self.stop_threads = False
         self.IOsetter = LocatorMain()
         self.root = parent
         self.queue = queue.Queue()
@@ -404,6 +412,12 @@ class Main_GUI:
         menu.add_cascade(label='Startup Settings',menu=setupmenu)
         setupmenu.add_command(label='Modify Startup Settings',command=self.add_to_startup)
         setupmenu.add_command(label='View Startup Settings',command=self.view_startup_settings)
+
+        exitmenu = Menu(menu)
+        menu.add_cascade(label='Exit',menu=exitmenu)
+        exitmenu.add_command(label='Exit GUI',command=self.root.destroy)
+        exitmenu.add_command(label='Exit all processes (incl. concert search)', command=self.exit_all)
+
         # Getting and formatting the upcoming concert info from the database
         space_frame = Frame(self.root,width=768,height=20)
         concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE)
@@ -426,6 +440,9 @@ class Main_GUI:
             self.queue_check()
 
         self.root.mainloop()
+
+
+
 
     def update_GUI_variables(self):
         with open('user_settings','r') as settings:
@@ -455,11 +472,11 @@ class Main_GUI:
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
         top = Toplevel()
-        SpotifyUpdate(top)
+        SpotifyUpdate(top,self.IOsetter.removed_bands)
 
     def concert_update(self):
         """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
-        self.conc_find = TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread')
+        self.conc_find = TkinterEventSubprocess(self.queue,CFinder,name='concert-lookup-thread')
         self.conc_find.start()
         self.concmenu.entryconfig(1,state=DISABLED)
         self.queue_check()
@@ -668,11 +685,19 @@ class Main_GUI:
                   text=f'GUI Window offset: Disabled').pack()
         Button(master=main_frame,text='Done',command=top.destroy).pack()
         main_frame.pack()
+
+    def exit_all(self):
+        global stop_all_threads
+        stop_all_threads = True
+        self.root.destroy()
+        sleep(5)
+        print([thread.name for thread in threading.enumerate()])
+
 class SpotifyUpdate:
     """GUI class for running through artist selection via spotify, this is essentially the same as the
     related methods found in the FirstTimeStartup class, but slightly modified to be able to run independently of
     the sequential order used in FirstTimeStartup"""
-    def __init__(self,parent):
+    def __init__(self,parent,removed=None):
         self.root = parent
         with open('user_settings','r') as settings:
             data = json.load(settings)
@@ -684,9 +709,9 @@ class SpotifyUpdate:
         self.spotifyapp = self.spotifyapp()
         playlists = next(self.spotifyapp)
         fr.destroy()
-        self.spotify_select_playlists(playlists)
+        self.spotify_select_playlists(playlists,removed)
 
-    def spotify_select_playlists(self,playlists):
+    def spotify_select_playlists(self,playlists,removed=None):
         """Gets a list of artists from the playlist"""
 
         def spot_selplay_continue_button(event,playlists=playlists):
@@ -695,7 +720,7 @@ class SpotifyUpdate:
             spot_selplay.destroy()
             self.root.update()
             artists = self.spotifyapp.send(playlists)
-            self.spotify_select_artists(artists)
+            self.spotify_select_artists(artists,removed)
 
         spot_selplay = Frame(self.root)
         spot_selplay_desc = Label(spot_selplay,text = 'Select which playlists you would like to track artists from',wraplength=500)
@@ -709,8 +734,10 @@ class SpotifyUpdate:
         for key,_ in playlists.items():
             spot_selplay_choices.insert(END,key)
 
-    def spotify_select_artists(self,artists):
+    def spotify_select_artists(self,artists,removed=None):
         """Select which artists are to be tracked"""
+        if removed is not None:
+            artists = [band for band in artists if band not in removed]
         def spot_selbands_continue_button(event,bands=artists):
             tracked = [spot_selbands_choices.get(i) for i in spot_selbands_choices.curselection()]
             if tracked:
@@ -747,7 +774,6 @@ class SpotifyUpdate:
 
 
 
-
 if __name__ == '__main__':
     app = Tk()
     #FirstTimeStartup(app).concert_lookup()
@@ -756,4 +782,5 @@ if __name__ == '__main__':
 
     main_test = Main_GUI(app)
     main_test()
-    app.mainloop()
+
+

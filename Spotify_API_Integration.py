@@ -21,9 +21,9 @@ class SpotifyIntegration:
 
     def __init__(self,user_id):
         """Sets up user permissions if not already done"""
-        self.uid = user_id
+        self.uid = str(user_id)
         scope = self.scopes[1]
-        token = util.prompt_for_user_token(user_id,f'{scope}',redirect_uri='http://localhost/',client_secret='c1710a69f80c405d9ecad0eb1c6f548d',client_id=self.client_id)
+        token = util.prompt_for_user_token(str(user_id),f'{scope}',redirect_uri='http://localhost/',client_secret='c1710a69f80c405d9ecad0eb1c6f548d',client_id=self.client_id)
 
     def __call__(self, *args, **kwargs):
 
@@ -77,7 +77,6 @@ class SpotifyIntegration:
                         tracked_bands.append(artist['name'])
                         print(artist['name'])
                         time.sleep(0.01)
-        print(set(tracked_bands),len(set(tracked_bands)))
         return set(tracked_bands)
 
 if __name__ == '__main__':
@@ -86,6 +85,7 @@ if __name__ == '__main__':
     with open('user_settings','r') as settings:
         data = json.load(settings)
         user_id = data['spotify_id']
+        json.dump(settings)
     spotify_update =SpotifyIntegration(user_id)
     updater = spotify_update()
     playlists = next(updater)

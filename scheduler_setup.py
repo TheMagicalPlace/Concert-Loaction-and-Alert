@@ -50,8 +50,7 @@ class SchedulerLinux:
             if self.user is not None:
                 cron = CronTab(user=self.user)
                 cron.remove_all(comment='concert_location_and_alert')
-                for job in cron:
-                    print(job)
+                cron.write()
         self.write_settings()
 
     def cron_setup(self,user,web_scraper_delay=1800,gui_launch_delay=3600):
@@ -77,6 +76,7 @@ class SchedulerLinux:
                    'gui_launch_delay': self.gui_launch_delay}
             json.dump(sch, schedule)
         self.update()
+
 class SchedulerWindows:
     def __init__(self):
         pass
@@ -84,4 +84,4 @@ class SchedulerWindows:
 
 if __name__ == '__main__':
     sch = SchedulerLinux()
-    sch.cron_setup('themagicalplace',1800,3600)
+    sch.cron_enable(False)

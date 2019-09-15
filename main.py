@@ -34,8 +34,8 @@ if __name__ =='__main__':
             print(data['last_checked'])
         with open('schedule_settings','r') as schedule:
             sch = json.load(schedule)
-            web_scraper_delay = sch['web_scraper_delay']
-            gui_launch_delay = sch['gui_launch_delay']
+            web_scraper_delay = int(sch['web_scraper_delay'])
+            gui_launch_delay = int(sch['gui_launch_delay'])
     except FileNotFoundError:
         startup_gui = Tk()
         FirstTimeStartup(startup_gui)

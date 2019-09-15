@@ -36,7 +36,7 @@ class ConcertFinder:
         with open('user_settings','w') as settings:
             json.dump(data,settings)
 
-        self.band_iterator()
+        return self.band_iterator_thread()
 
     def _setUp(self):
         """Checks if a database already exists for concert info, and creates one if not"""
@@ -101,6 +101,11 @@ class ConcertFinder:
                 cur.execute(f"CREATE TABLE {self.banddb[band]} (Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
                 cur.execute(f"INSERT INTO {self.banddb[band]} VALUES (?,?,?,?,?)",
                             (vals[0][0], vals[1], 'Not Implimented Yet', vals[0][1], vals[2]))
+
+
+    # This has been replaced by band_iterator thread in in order to allow the spawned threads to safely exit without
+    # risking data corruption
+
     def band_iterator(self):
         """Iterates through all of the bands given in the JSON file"""
 
@@ -117,6 +122,27 @@ class ConcertFinder:
                                 f"(Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
                     self._website_search_songkick(band)
                 self._band_info_write(band,cur)
+
+
+    def band_iterator_thread(self):
+        bands = (band for band in self.bands)
+        print('test')
+        while bands:
+            band = next(bands)
+            yield self.bands.index(band)
+            with self.concert_database as cdb:
+                self.concerts = defaultdict(list)
+                cur = cdb.cursor()
+                self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
+                try:
+                    concert_dates = [cdate[0] for cdate in cur.execute(f'SELECT Date FROM {self.banddb[band]}').fetchall()]
+                    self._website_search_songkick(band,concert_dates)
+                except sqlite.OperationalError:
+                    cur.execute(f"CREATE TABLE {self.banddb[band]} "
+                                f"(Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
+                    self._website_search_songkick(band)
+                self._band_info_write(band,cur)
+
 
 
 
