@@ -6,14 +6,15 @@ import json
 
 
 class LocatorSetup:
-
+    """The (poorly named) class containing the methods used to format and save the data from the first
+    time setup into a user_settings file"""
     def __init__(self):
         self.state_pairs = {}
         self.abbreviation_to_state = {}
         self.state_to_abbreviation = {}
         self.user_location = [None, None]
         self.bands = []
-        self.concert_notification_range = 2
+        self.concert_notification_time_to_display = 2
         self.last_checked = None
         self.removed_bands = []
         self.spotify_id = None
@@ -90,10 +91,10 @@ class LocatorSetup:
                  'user_location':self.user_location,
                  'state_to_abbreviation':self.state_to_abbreviation,
                  'abbreviation_to_state':self.abbreviation_to_state,
-                 'bands':self.bands,
+                 'bands':list(set(self.bands)),
                 'spotify_id':self.spotify_id,
                 'last_checked':self.last_checked,
-                'concert_notification_range':self.concert_notification_range,# weeks, default time until concert to present notifications
+                'concert_notification_time_to_display':self.concert_notification_time_to_display,# weeks, default time until concert to present notifications
                 'removed_bands':self.removed_bands}
         with open('user_settings','w') as settings:
             json.dump(data,settings)
@@ -115,7 +116,7 @@ class LocatorMain(LocatorSetup):
 
     def update_user_location(self,location):
         '''Changes user location'''
-        # TODO - currently setting it like this wont update location for already tracked cocnerts, either
+        # TODO - currently setting it like this wont update location for already tracked concerts, either
         # TODO find a way to track multiple or dump all the tables & start fresh
         super().user_location_set(location)
         self.save_data()
@@ -124,10 +125,6 @@ class LocatorMain(LocatorSetup):
         self.spotify_user_id = None
         self.save_data()
 
-    def notification_range_update(self,_range):
-        'changes the range of dates for which notifications will be given'
-        self.concert_notification_range = _range
-        self.save_data()
 
     def add_bands(self,bands):
         super().get_bands(bands)
@@ -143,6 +140,8 @@ class LocatorMain(LocatorSetup):
         super().get_bands(bands)
         self.save_data()
 
-    def update_last_checked(self):
-        self.last_checked = datetime.date.today().isoformat()
+    def change_time_to_display(self,ttd):
+        'changes the range of dates for which notifications will be given'
+        self.concert_notification_time_to_display = ttd
         self.save_data()
+

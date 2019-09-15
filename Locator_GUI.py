@@ -1,7 +1,7 @@
 
 from time import sleep
 import Spotify_API_Integration as spot
-from InitialSetup import LocatorSetup,LocatorMain
+from ModifyUserSettings import LocatorSetup,LocatorMain
 from ConcertScraper import ConcertFinder as CFinder
 from tkinter import *
 import sqlite3 as sqlite
@@ -12,15 +12,15 @@ import sys
 import queue
 from scheduler_setup import *
 from scheduler_setup import *
-
+from Notifier import *
 stop_all_threads = False
 
 class TkinterEventSubprocess(threading.Thread):
-
+    """class used to spawn threads in the Tkinter widgets (hopefully) without breaking anything"""
 
     def __init__(self, queue,callable_instance,name=None,args=None):
         super().__init__()
-        if name is not None:
+        if name is not None: #
             self.name = name
         self.queue = queue
         self.threaded_func = callable_instance
@@ -30,6 +30,8 @@ class TkinterEventSubprocess(threading.Thread):
         thread_func_gen = funcgen()
         try:
             while True:
+                # yield is used in the scraper so that stop_all_threads can be checked after each lookup,
+                # enabling termination of the thread quickly and without risking data corruption
                 next(thread_func_gen)
                 if stop_all_threads:
                     print('thread ended due to shutdown')
@@ -38,20 +40,65 @@ class TkinterEventSubprocess(threading.Thread):
             self.queue.put('Done')
 
 class FirstTimeStartup:
+    """
+    This class contains all of the GUI states needed for the first time startup of the app (i.e. getting user location.
+    setting up launch on boot & launch delays, setting up spotify integration), all of which are run through sequentially
+    upon , with 'message1' being called by __init__. Since the class methods aren't listed entirely in sequential order,
+    there is an outline of the decision tree below.
+
+    message1
+      ﹀
+      ﹀
+    message2
+      ﹀
+      ﹀
+    spotify int > (yes) > spotify_setup_user_input
+      ﹀                          ﹀
+      (no)                       ﹀
+      ﹀                  spotify_select_playlists
+    manual_band_input            ﹀
+      ﹀                         ﹀
+      ﹀                         ﹀
+    concert_lookup < < < < spotify_select artists
+      ﹀
+      ﹀
+      ﹀
+    add_to_startup > > > (yes-use_default) > > > (yes-set custom values)
+      ﹀                    ﹀                             ﹀
+      ﹀                    ﹀                             ﹀
+      (no)                 add_to_startup_default     add_to_startup_custom
+      ﹀                    ﹀                             ﹀
+      ﹀                    ﹀                             ﹀
+    launch_main < < < < < < < < < < < < < < < < < < < < < < <
+
+    Notably, if the concert lookup (concert_lookup, the actual lookup is done by ConcertScraper.py) is launched
+    during setup, a seperate thread is spawned while proceeding. If the GUI is exited this thread will continue to run,
+    the only programmed way to kill it is by continuing on to Main_GUI (i.e. selecting 'Now' in launch_main), or by
+    killing is using a task manager.
+
+
+
+
+
+    """
 
     spotifyapp = None
     """Runs through the first time setup GUI"""
 
     def __init__(self,parent):
+        """Initializes the parameters used across methods and then runs the instance"""
         self.spotifyapp = None
         self.root = parent
-        self.user_data_setup = LocatorSetup()
+        self.user_data_setup = LocatorSetup() #
         self.user_data_setup = self.user_data_setup()
         self.queue = queue.Queue()
+        self()
+
 
     def __call__(self, *args, **kwargs):
-        # Attempts to prime the user_data_setup coroutine, if it returns a StopIteration user data is already present
-        # and the initial setup code is not run (outside instancing the class)
+        """Attempts to prime the user_data_setup coroutine, if it returns a StopIteration user data is already present
+        and the initial setup code is not run (outside instancing the class). Really, this should never be an issue since
+        FirstTimeStartup is never called unless the user_settings file is nonexistant """
         try:
             next(self.user_data_setup)
         except StopIteration:
@@ -75,7 +122,7 @@ class FirstTimeStartup:
         frame1.pack()
 
     def message2(self):
-        """Notes down user location"""
+        """Notes down user location and sends it to the LocatorSetup (from ModifyUserSettings.py"""
         def message2_button(event):
             val = location_input.get()
             print(val)
@@ -99,7 +146,10 @@ class FirstTimeStartup:
     # These methods are run sequentially if spotify integration is selected
 
     def spotify_int(self):
+        """
+        Allows the user to select enable spotify integration or only manually input bands
 
+        """
         def spotint_yes_button(event):
             print('yes registered')
             spotint.destroy()
@@ -123,18 +173,20 @@ class FirstTimeStartup:
         spotint.pack()
 
     def spotify_setup_user_input(self):
+        """Gets the users spotify ID and attempts to validate credentials"""
         def spotint_send_button(event):
 
             user_id = spot_usrsetup_field.get()
             user_id = '1214002279'
             self.user_data_setup.send(user_id)
             spot_usrsetup.destroy()
+            f = Label(master=self.root,text='Getting Playlist Data - Please Wait')
+            f.pack()
             self.root.update()
-            print('user id recieved')
-
             self.spotifyapp = spot.SpotifyIntegration(user_id)
             self.spotifyapp = self.spotifyapp()
             playlists = next(self.spotifyapp)
+            f.destroy()
             self.spotify_select_playlists(playlists)
 
 
@@ -151,14 +203,18 @@ class FirstTimeStartup:
         spot_usrsetup.pack()
 
     def spotify_select_playlists(self,playlists):
-        """Gets a list of artists from the playlist"""
+        """Gets a list of playlists from the users Spotify account and sends the selected playlists foreward"""
 
         def spot_selplay_continue_button(event,playlists=playlists):
             selection = [spot_selplay_choices.get(i) for i in spot_selplay_choices.curselection()]
             playlists = {name:data for name,data in playlists.items() if name in selection}
             spot_selplay.destroy()
+            f = Label(master=self.root, text='Gathering Band Data - Please Wait')
+            f.pack()
             self.root.update()
+
             artists = self.spotifyapp.send(playlists)
+            f.destroy()
             self.spotify_select_artists(artists)
 
         spot_selplay = Frame(self.root)
@@ -230,7 +286,8 @@ class FirstTimeStartup:
         band_in_frame.pack()
 
     def concert_lookup(self):
-
+        """Allows the user to optionally do the concert lookup while the rest of the setup is run.
+        This spawns a seperate thread to run the web scraper"""
         def lookup_yes_action():
             lookup.destroy()
             self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
@@ -252,7 +309,8 @@ class FirstTimeStartup:
     #The following three methods are involved in setup and customization of startup settings
 
     def add_to_startup(self):
-
+        """Allows the user to add the program to startup, on Mac and Linux systems this can be done
+        via scheduler_setup.py, but must be done by the user on Windows OS"""
         def default_button():
             frm.destroy()
             self.add_to_startup_default()
@@ -284,7 +342,8 @@ class FirstTimeStartup:
             frm.pack()
 
     def add_to_startup_default(self):
-
+        """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
+        an hour after startup for the main GUI to launch"""
         def cont_button():
             usr = ent.get()
             schdl = SchedulerLinux()
@@ -301,7 +360,7 @@ class FirstTimeStartup:
         cronfrm_default.pack()
 
     def add_to_startup_custom(self):
-
+        """Creates a cron job with user specified delays for the web scraper and GUI"""
         def cont_button_custom():
             usr = entusr.get()
             scraper_delay = entdelay1.get()
@@ -329,7 +388,8 @@ class FirstTimeStartup:
     # Launches the main GUI
 
     def launch_main(self):
-
+        """Allows the user to launch the main GUI immediatly, after the concert scraper is complete (if it was started)
+        or just close the application. If the application is closed here the web scraper will run until complete"""
         def now_button():
             self.root.destroy()
             master = Tk()
@@ -372,19 +432,22 @@ class Main_GUI:
     this happens such that it should hopefully be clear when the other files are being called"""
 
     def __init__(self,parent):
+        """Initializes the variables used across class methods, of note is that UpdateSettings is an instance of
+        LocatorMain, and is used to update the user_settings file whenever changes are made. Those changes are then reflected
+        by the GUI where applicable"""
         """Initializes all the important stuff used in the window. Notable things initialized here include the
         'IOsetter' which is an instance that is used to modify and update the 'user_settings' file based on manual input.
-        The class for this instance can be found in InitialSetup.py as LocatorMain"""
-        self.stop_threads = False
-        self.IOsetter = LocatorMain()
-        self.root = parent
+        The class for this instance can be found in ModifyUserSettings.py as LocatorMain"""
+        self.UpdateSettings = LocatorMain()
+        self.root = parent # a Tk() instance
         self.queue = queue.Queue()
         self.concert_database = sqlite.connect('concert_db.db')
         self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
         self.banddb = {re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band]):band for band in self.bands}
-        self.scheduler = initialize_scheduler()
+        self.scheduler = initialize_scheduler() # creates an instance of the appropriate scheduler and returns it
+
 
     def __call__(self):
         """Initializes the main window, which includes the menu as well as the information for the upcoming concerts"""
@@ -398,9 +461,10 @@ class Main_GUI:
 
         # Manual initiation of concert lookup
         self.concmenu = Menu(menu)
-        menu.add_cascade(label='Concert Search',menu=self.concmenu)
+        menu.add_cascade(label='Search and Notification',menu=self.concmenu)
         self.concmenu.add_command(label='Search for upcoming concerts',command=self.concert_update)
-
+        self.concmenu.add_command(label='Change how far in advance to display concert information',
+                                  command=self.concert_time_to_update)
         # Menu for addition/removal of bands manually
         manmenu = Menu(menu)
         menu.add_cascade(label='Add/Remove Artists',menu=manmenu)
@@ -415,27 +479,21 @@ class Main_GUI:
 
         exitmenu = Menu(menu)
         menu.add_cascade(label='Exit',menu=exitmenu)
-        exitmenu.add_command(label='Exit GUI',command=self.root.destroy)
+        exitmenu.add_command(label='Exit GUI',command=self.root.destroy) # doesn't kill seperate threads (i.e the scraper)
         exitmenu.add_command(label='Exit all processes (incl. concert search)', command=self.exit_all)
 
         # Getting and formatting the upcoming concert info from the database
-        space_frame = Frame(self.root,width=768,height=20)
-        concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE)
-        space_frame.pack()
-        concert_frame.pack()
-        Frame(self.root,width=768,height=20).pack()
-        with self.concert_database as cdb:
-            cur = cdb.cursor()
-            up = list(cur.execute('SELECT * FROM Upcoming ORDER BY Date'))
-            up.insert(0, ['Band', 'Location', 'Time', 'Date', 'Days until concert'])
-            framedimensions = [max([len(j) for j in i]) for i in list(zip(*copy(up)))]
-            up = list(up)
-        self.displaybar(concert_frame,up,framedimensions)
+        self.concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE,pady=20)
+        self.concert_frame.pack()
+        up,framedimensions = Notifications().notify_user_()
+        self.displaybar(self.concert_frame,up,framedimensions)
 
 
 
         thread_ids = [ thr.name for thr in threading.enumerate()]
-        if 'concert-lookup-thread' not in thread_ids:
+
+        # if the lookup thread (from the setup or launch on reboot) is running the web scraper can not be launched
+        if 'concert-lookup-thread' in thread_ids:
             self.concmenu.entryconfig(1, state=DISABLED)
             self.queue_check()
 
@@ -445,6 +503,7 @@ class Main_GUI:
 
 
     def update_GUI_variables(self):
+        """updates the instance variables after user_settings is changed"""
         with open('user_settings','r') as settings:
             data = json.load(settings)
             for key,value in data.items():
@@ -472,7 +531,7 @@ class Main_GUI:
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
         top = Toplevel()
-        SpotifyUpdate(top,self.IOsetter.removed_bands)
+        SpotifyUpdate(top, self.UpdateSettings.removed_bands)
 
     def concert_update(self):
         """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
@@ -482,6 +541,7 @@ class Main_GUI:
         self.queue_check()
 
     def queue_check(self):
+        """Tracks if the web scraper thread is still alive"""
         thread_ids = [thr.name for thr in threading.enumerate()]
         if 'concert-lookup-thread'  in thread_ids:
             print('waiting')
@@ -497,7 +557,7 @@ class Main_GUI:
         def message2_button(event,parent):
             bands = band_input.get()
             print(bands)
-            self.IOsetter.add_bands(bands)
+            self.UpdateSettings.add_bands(bands)
             self.update_GUI_variables()
             top.destroy()
 
@@ -513,14 +573,14 @@ class Main_GUI:
         band_in_frame.pack()
 
     def remove_artists(self):
-        """Manual removal of artists to user_settings using the IOsetter mentioned in the __init__ docstring"""
+        """Manual removal of artists to user_settings using the UpdateSettings mentioned in the __init__ docstring"""
         top = Toplevel()
 
         def button_event_listbox(bands=self.bands):
-            removed = [list_choices.get(i) for i in list_choices.curselection()]
+            removed = sorted([list_choices.get(i) for i in list_choices.curselection()])
             if removed:
                 removed_bands = removed
-                self.IOsetter.remove_bands(removed_bands)
+                self.UpdateSettings.remove_bands(removed_bands)
 
             band_in_frame.destroy()
             self.update_GUI_variables()
@@ -537,7 +597,7 @@ class Main_GUI:
         frame_description.pack(),list_choices.pack(),frame_button_1.pack()
         band_in_frame.pack()
 
-        for band in self.bands:
+        for band in sorted(self.bands):
             list_choices.insert(END,band)
 
     def add_removed_artist(self):
@@ -548,7 +608,7 @@ class Main_GUI:
             removed = [list_choices.get(i) for i in list_choices.curselection()]
             if removed:
                 removed_bands = removed
-                self.IOsetter.add_removed_bands(removed_bands)
+                self.UpdateSettings.add_removed_bands(removed_bands)
 
             band_in_frame.destroy()
             wait = Label(self.root,text='Saving - Please Wait')
@@ -569,21 +629,23 @@ class Main_GUI:
             list_choices.insert(END,band)
 
     def update_location(self):
+        """updates the location from which the user tracks from"""
         top = Toplevel()
         def button_event():
             location = location_input.get()
-            self.IOsetter.update_user_location(location)
+            self.UpdateSettings.update_user_location(location)
             top.destroy()
 
         location_frame = Frame(top)
         frame_input_text = 'Input the location you would like to track from.'
         message2 = Label(location_frame, text=frame_input_text,wraplength=500)
         location_input = Entry(location_frame)
-        location_input_button = Button(location_frame)
+        location_input_button = Button(location_frame,command=button_event)
         message2.pack(),location_input.pack(), location_input_button.pack()
         location_frame.pack()
 
     def add_to_startup(self):
+        """Used for modification of the startup settings"""
         top = Toplevel()
         if self.scheduler.system != 'linux/mac':
             top.destroy()
@@ -619,7 +681,8 @@ class Main_GUI:
             frm.pack()
 
     def add_to_startup_default(self,parent=None):
-
+        """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
+        an hour after startup for the main GUI to launch"""
         def cont_button():
             usr = ent.get()
             self.scheduler.cron_enable(True)
@@ -637,7 +700,7 @@ class Main_GUI:
         cronfrm_default.pack()
 
     def add_to_startup_custom(self,parent=None):
-
+        """Creates a cron job with user specified delays for the web scraper and GUI"""
         def cont_button_custom():
             self.scheduler.cron_enable(True)
             usr = entusr.get()
@@ -669,14 +732,13 @@ class Main_GUI:
         Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
 
     def view_startup_settings(self):
-        scheduler = initialize_scheduler()
         top = Toplevel()
         main_frame = Frame(top)
-        if scheduler.init_on_startup:
+        if self.scheduler.init_on_startup:
 
             Label(master=main_frame,text=f'Launch on startup: Enabled').pack()
-            Label(master=main_frame,text=f'Web Scraper offset : {scheduler.web_scraper_delay//60} Minutes after startup').pack()
-            Label(master=main_frame,text=f'GUI Window offset: {scheduler.gui_launch_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay//60} Minutes after startup').pack()
         else:
             Label(master=main_frame,text='Launch on startup: Disabled').pack()
             Label(master=main_frame,
@@ -687,11 +749,35 @@ class Main_GUI:
         main_frame.pack()
 
     def exit_all(self):
+        '''kills any seperate threads and exits the application'''
         global stop_all_threads
         stop_all_threads = True
         self.root.destroy()
         sleep(5)
         print([thread.name for thread in threading.enumerate()])
+
+    def concert_time_to_update(self):
+        """Updates the time range to display upcoming cocncerts in the GUI"""
+
+        top = Toplevel()
+        def button_event():
+            time_to_display = int(float(location_input.get()))
+            self.UpdateSettings.change_time_to_display(time_to_display)
+            Notifications().check_dates()
+            top.destroy()
+            self.concert_frame.destroy()
+            self.concert_frame = Frame(self.root, width=768, height=576, borderwidth=5, relief=RIDGE,pady=20)
+            self.concert_frame.pack()
+            up, framedimensions = Notifications().notify_user_()
+            self.displaybar(self.concert_frame, up, framedimensions)
+
+        location_frame = Frame(top)
+        frame_input_text = 'Input how many weeks in advance you would like concert information to be displayed.'
+        message2 = Label(location_frame, text=frame_input_text,wraplength=500)
+        location_input = Entry(location_frame)
+        location_input_button = Button(location_frame,command=button_event)
+        message2.pack(),location_input.pack(), location_input_button.pack()
+        location_frame.pack()
 
 class SpotifyUpdate:
     """GUI class for running through artist selection via spotify, this is essentially the same as the
@@ -770,8 +856,6 @@ class SpotifyUpdate:
 
     #FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
     #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
-
-
 
 
 if __name__ == '__main__':

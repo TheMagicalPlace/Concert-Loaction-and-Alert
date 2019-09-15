@@ -31,6 +31,7 @@ class SchedulerLinux:
             self.gui_launch_delay = 3600
             self.user = None
     def update(self):
+        """updates the instance variables for use in the GUI"""
         with open('schedule_settings', 'r') as schedule:
             data = json.load(schedule)
             for key, value in data.items():
@@ -41,6 +42,7 @@ class SchedulerLinux:
 
 
     def cron_enable(self,response):
+        """enables/disables the cron job"""
         if response:
             self.init_on_startup = True
         else:
@@ -54,6 +56,7 @@ class SchedulerLinux:
         self.write_settings()
 
     def cron_setup(self,user,web_scraper_delay=1800,gui_launch_delay=3600):
+        """sets up or modifies a cron job as well as the delay's for launching of the scraper and gui"""
         self.user = user
         self.web_scraper_delay = web_scraper_delay
         self.gui_launch_delay = gui_launch_delay
@@ -64,6 +67,7 @@ class SchedulerLinux:
         else:
             startup = cron.new(f'export DISPLAY=:0 && python3 {getcwd()}/main.py',comment='concert_location_and_alert')
             startup.every_reboot()
+            startup.env['IS_RUN_BY_CRON'] = True
             cron.write()
         self.write_settings()
 
