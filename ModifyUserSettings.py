@@ -99,7 +99,6 @@ class LocatorSetup:
         with open('user_settings','w') as settings:
             json.dump(data,settings)
 
-
 class LocatorMain(LocatorSetup):
     ''' This class is essentially a container for all the operations required by the GUI, with
     some stuff recycled from the class that is used for first time setup (LocatorSetup). Notable differences include

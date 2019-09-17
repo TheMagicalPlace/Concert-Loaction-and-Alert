@@ -65,7 +65,7 @@ class SchedulerLinux:
             if job.comment == 'concert_location_and_alert':
                 break
         else:
-            startup = cron.new(f'export DISPLAY=:0 && python3 {getcwd()}/main.py',comment='concert_location_and_alert')
+            startup = cron.new(f'export DISPLAY=:0 && python3 {getcwd()}/startup_file.py',comment='concert_location_and_alert')
             startup.every_reboot()
             startup.env['IS_RUN_BY_CRON'] = True
             cron.write()

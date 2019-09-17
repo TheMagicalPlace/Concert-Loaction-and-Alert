@@ -4,46 +4,32 @@ import spotipy,spotipy.util as util
 import time
 import json
 from collections import  defaultdict
-
-
+import logging
+import Spotify_token_handler
 class SpotifyIntegration:
     """Despite the name, this class contains functions both for the aquisition of the artists a user wished to track
     using the Spotify API, as well as extracting and storing the important bits in the database used across this app"""
 
 
-    scopes = ['user-top-read','playlist-read-private','user-read-recently-played']
+    scopes = ['user-top-read','','user-read-recently-played']
 
     # 'secret' is a strong word here, this'll be changed before release to get the client id and secret from a server
     # or something instead of just having it right here
 
-    secret = 'c1710a69f80c405d9ecad0eb1c6f548d'
-    client_id = 'ce4091c720c04087ad60ed054ffd9760'
 
-    def __init__(self,user_id):
-        """Sets up user permissions if not already done"""
+    def __init__(self,scope,user_id):
         self.uid = str(user_id)
-        scope = self.scopes[1]
-        token = util.prompt_for_user_token(str(user_id),f'{scope}',redirect_uri='http://localhost/',client_secret='c1710a69f80c405d9ecad0eb1c6f548d',client_id=self.client_id)
+        self.token = Spotify_token_handler.spotify_get_token(scope)['access_token']
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self):
+        """the coroutine, with each yield used to return control to the GUI in order to get data for the next method"""
 
-        secret = 'c1710a69f80c405d9ecad0eb1c6f548d'
-        client_id ='ce4091c720c04087ad60ed054ffd9760'
-
-        # TODO remove token aquisition here and simpilify to just get tokens on initialization of an insance
-
-        #This is mostly redundant as the token can just be taken from init
-        token = util.prompt_for_user_token(self.uid, f'playlist-read-private', redirect_uri='http://localhost/',
-                                           client_secret='c1710a69f80c405d9ecad0eb1c6f548d', client_id=self.client_id)
-        self.sp = spotipy.Spotify(auth=token)
+        self.sp = spotipy.Spotify(auth=self.token)
         #What does this do?
         self.sp.trace = False
-
-        # Again, is there any reason for this to be here? -- Prevents StopIteration for 'reasons'
-        if True:
-            playlists = self.sp.user_playlists(self.uid,limit=50)
-            playlist_data = yield self.search_playlists(playlists)
-            yield self.log_bands(playlist_data)
+        playlists = self.sp.user_playlists(self.uid,limit=50)
+        playlist_data = yield self.search_playlists(playlists)
+        yield self.log_bands(playlist_data)
 
 
     def search_playlists(self,playlists):
@@ -56,8 +42,8 @@ class SpotifyIntegration:
         for playlist in playlists['items']:
             if playlist['owner']['id'] == self.uid: # the auth token is limited to reading only user-owned playlists
 
-                #print(playlist['name'])
-                #print('  total tracks', playlist['tracks']['total']) # prints no. of tracks in each playlist
+                logging.debug(msg=playlist['name'])
+                logging.debug('total tracks', playlist['tracks']['total'])
 
                 run_results = self.sp.user_playlist(self.uid, playlist['id'], fields="tracks,next")
                 tracks = run_results['tracks']
@@ -75,18 +61,19 @@ class SpotifyIntegration:
                 for tdata in track_data['items']:
                     for artist in tdata['track']['artists']:
                         tracked_bands.append(artist['name'])
-                        print(artist['name'])
-                        time.sleep(0.01)
-        return set(tracked_bands)
+                        logging.debug(artist['name'])
+                        time.sleep(0.01) # there's really no reason for this to be here, but eh
+        return set(tracked_bands)  # returned as a set to remove duplicates
 
 if __name__ == '__main__':
-
+    logging.basicConfig(level=logging.DEBUG)
 
     with open('user_settings','r') as settings:
         data = json.load(settings)
         user_id = data['spotify_id']
-        json.dump(settings)
-    spotify_update =SpotifyIntegration(user_id)
+
+    spotify_update =SpotifyIntegration('playlist-read-private',user_id)
     updater = spotify_update()
     playlists = next(updater)
     updater.send({'a':playlists['Offline']})
+    logging.info(',')

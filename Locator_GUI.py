@@ -862,8 +862,6 @@ if __name__ == '__main__':
     app = Tk()
     #FirstTimeStartup(app).concert_lookup()
 
-
-
     main_test = Main_GUI(app)
     main_test()
 
