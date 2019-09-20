@@ -109,7 +109,7 @@ class FirstTimeStartup:
             self.root.mainloop()
 
     def message1(self):
-        """This does nothing other than note that the program has been started"""
+        """This does nothing other than note that the gui has been started"""
         def message1_terminate(event):
             self.root.update()
             sleep(1)
@@ -122,7 +122,7 @@ class FirstTimeStartup:
         frame1.pack()
 
     def message2(self):
-        """Notes down user location and sends it to the LocatorSetup (from ModifyUserSettings.py"""
+        """Records user location and sends it to the LocatorSetup (from ModifyUserSettings.py)"""
         def message2_button(event):
             val = location_input.get()
             print(val)
@@ -132,9 +132,11 @@ class FirstTimeStartup:
             return val
 
         frame2 = Frame(self.root)
-        message2text = ' In order to only keep track of nearby concerts, your location is requred. Please input' \
-                       'the location you would like to track from in the form City,State. Note that this application is' \
-                       'currently limited to only United States residents'
+        message2text = ' In order to only keep track of nearby concerts, your location is required. Please input' \
+                       'the location you would like to track from as City,State. Currently, this' \
+                       'won\t work outside of the United States, so for users outside of the' \
+                       'United States concerts will still be tracked, however you will be unable to filter upcoming concerts' \
+                       'by location.'
         message2 = Label(frame2, text=message2text,wraplength=500)
         location_input = Entry(frame2)
         location_input_button = Button(frame2)
@@ -147,7 +149,7 @@ class FirstTimeStartup:
 
     def spotify_int(self):
         """
-        Allows the user to select enable spotify integration or only manually input bands
+        Allows the user to select enable Spotify integration or only manually input bands
 
         """
         def spotint_yes_button(event):
@@ -163,8 +165,8 @@ class FirstTimeStartup:
             pass
 
         spotint = Frame(self.root)
-        spotint_text = Label(spotint,text='Would you like to use one (or more) of your spotify playlists in order to '
-                                          'determine what bands to track?',wraplength=500)
+        spotint_text = Label(spotint,text='Would you like to get artists to track via spotify? If not'
+                                          'you can add them manually, or enable it later.',wraplength=500)
         spotint_yes = Button(spotint,text='Yes')
         spotint_no = Button(spotint,text='No')
         spotint_yes.bind('<Button-1>',spotint_yes_button)
@@ -191,7 +193,7 @@ class FirstTimeStartup:
 
 
         spot_usrsetup = Frame(self.root)
-        spot_usrsetup_dist = Label(spot_usrsetup,text = 'Note: in order to impliment spotify integration your spotify ID '
+        spot_usrsetup_dist = Label(spot_usrsetup,text = 'Note: In order to impliment spotify integration your spotify ID '
                                                         'is required. In most cases this is not the same as your spotify '
                                                         'login information. In order to find your spotify ID go to '
                                                         'https://www.spotify.com/us/account/overview/ and click on the '
@@ -254,7 +256,9 @@ class FirstTimeStartup:
 
         spot_selbands = Frame(self.root)
         spot_selbands_desc = Label(spot_selbands,text='Select which bands you would like to follow or just press Done '
-                                                      'to track all listed bands')
+                                                      'to track all listed bands. If you have a large number of bands'
+                                                      'in your playlists, it may be easier just hit Done and remove'
+                                                      'the ones you don\'t want to track later')
         spot_selbands_choices = Listbox(spot_selbands,selectmode=MULTIPLE)
         spot_selbands_button = Button(spot_selbands,text='Done')
         spot_selbands_button.bind('<Button-1>',spot_selbands_continue_button)
@@ -269,14 +273,13 @@ class FirstTimeStartup:
         """For manual entry of bands to track, YMMV. Also this is just a copy of message 2 in terms of code"""
         def message2_button(event):
             val = band_input.get()
-            print(val)
             self.user_data_setup.send('Not Given')
             self.user_data_setup.send(val)
             band_in_frame.destroy()
             self.concert_lookup()
 
         band_in_frame = Frame(self.root)
-        man_imput_2text = 'Input each band you would like to track, seperated by commas'
+        man_imput_2text = 'Input each band you would like to track, separated by commas'
         message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
         band_input = Entry(band_in_frame)
         band_input_button = Button(band_in_frame)
@@ -287,7 +290,7 @@ class FirstTimeStartup:
 
     def concert_lookup(self):
         """Allows the user to optionally do the concert lookup while the rest of the setup is run.
-        This spawns a seperate thread to run the web scraper"""
+        This spawns a separate thread to run the web scraper"""
         def lookup_yes_action():
             lookup.destroy()
             self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
@@ -298,9 +301,9 @@ class FirstTimeStartup:
             self.add_to_startup()
 
         lookup = Frame(self.root)
-        lookup_text = Label(lookup,text='Would you like to find concert dates now? Note that this obviously required'
+        lookup_text = Label(lookup,text='Would you like to find concert dates now? This requires '
                                         'an internet connection, and may take a while in cases where a large'
-                                        'number of bands are tracked')
+                                        'number of bands are tracked. If not you can always do this later.')
         lookup_button_yes=Button(lookup,text='Yes',command=lookup_yes_action)
         lookup_button_no = Button(lookup,text='No',command=lookup_no_action)
         lookup_text.pack(),lookup_button_yes.pack(),lookup_button_no.pack()
@@ -331,7 +334,7 @@ class FirstTimeStartup:
         if user_os == 'linux':
             Label(master=frm,text='This application is designed to make use of the cron scheduler to '
                                   'automatically perform most of it\'s functions. While you *should* have'
-                                  'no issues with just manually updating as you go, for sake of ease I would reccomend '
+                                  'no issues with just manually updating as you go, for sake of ease I would recommend '
                                   'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                   'delay from startup before concert data is updated from the web, and a one hour delay'
                                   'before the window with the upcoming concerts is displayed' ,wraplength=500).pack()
@@ -459,6 +462,7 @@ class Main_GUI:
         spotmenu = Menu(menu)
         menu.add_cascade(label='Spotify Settings',menu=spotmenu)
         spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
+        spotmenu.add_command(label='Enable/Disable Spotify Tracking',command=self.spotify_toggle)
 
         # Manual initiation of concert lookup
         self.concmenu = Menu(menu)
@@ -533,6 +537,24 @@ class Main_GUI:
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
         top = Toplevel()
         SpotifyUpdate(top, self.UpdateSettings.removed_bands)
+
+    def spotify_toggle(self):
+        top = Toplevel()
+        window = Frame(master=top)
+        window.pack()
+
+        def button_event():
+            self.UpdateSettings.remove_spotify_tracking()
+            top.destroy()
+
+        if self.UpdateSettings.spotify_id:
+            Label(master=window, text='Would you like to disable spotify integration? You can always re-enable it later').pack()
+            Button(master=window, text='Yes', command=button_event).pack()
+            Button(master=window, text='No', command=top.destroy).pack()
+        else:
+            top.destroy()
+            pass
+        # TODO finish this
 
     def concert_update(self):
         """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
