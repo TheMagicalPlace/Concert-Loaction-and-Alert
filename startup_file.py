@@ -36,8 +36,8 @@ if __name__ == '__main__':
         with open('schedule_settings', 'r') as schedule:
             sch = json.load(schedule)
             if sch['init_on_startup']:
-                web_scraper_delay = int(sch['web_scraper_delay'])
-                gui_launch_delay = int(sch['gui_launch_delay'])
+                web_scraper_delay = int(sch['web_scraper_delay'])*60
+                gui_launch_delay = int(sch['gui_launch_delay'])*60
             else:
                 web_scraper_delay, gui_launch_delay = None, None
     except FileNotFoundError:

@@ -19,7 +19,7 @@ class SpotifyIntegration:
 
     def __init__(self,scope,user_id):
         self.uid = str(user_id)
-        self.token = Spotify_token_handler.spotify_get_token(scope)['access_token']
+        self.token = Spotify_token_handler.spotify_get_token(scope)
 
     def __call__(self):
         """the coroutine, with each yield used to return control to the GUI in order to get data for the next method"""

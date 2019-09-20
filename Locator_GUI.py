@@ -94,7 +94,6 @@ class FirstTimeStartup:
         self.queue = queue.Queue()
         self()
 
-
     def __call__(self, *args, **kwargs):
         """Attempts to prime the user_data_setup coroutine, if it returns a StopIteration user data is already present
         and the initial setup code is not run (outside instancing the class). Really, this should never be an issue since
@@ -177,13 +176,12 @@ class FirstTimeStartup:
         def spotint_send_button(event):
 
             user_id = spot_usrsetup_field.get()
-            user_id = '1214002279'
             self.user_data_setup.send(user_id)
             spot_usrsetup.destroy()
             f = Label(master=self.root,text='Getting Playlist Data - Please Wait')
             f.pack()
             self.root.update()
-            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id)
+            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id) # playlist-read-private is the only scope needed, so this is hardcoded
             self.spotifyapp = self.spotifyapp()
             playlists = next(self.spotifyapp)
             f.destroy()
@@ -309,82 +307,117 @@ class FirstTimeStartup:
     #The following three methods are involved in setup and customization of startup settings
 
     def add_to_startup(self):
-        """Allows the user to add the program to startup, on Mac and Linux systems this can be done
-        via scheduler_setup.py, but must be done by the user on Windows OS"""
+        """Used for modification of the startup settings"""
+        top = self.root # this code is mostly taken from main GUI
+        self.scheduler = initialize_scheduler()
+
         def default_button():
             frm.destroy()
-            self.add_to_startup_default()
+            self.add_to_startup_default(top)
 
         def custom_button():
             frm.destroy()
-            self.add_to_startup_custom()
+            self.add_to_startup_custom(top)
 
         def disable_button():
             frm.destroy()
-            schdl = SchedulerLinux()
-            schdl.cron_enable(False)
+            self.scheduler.enabledisable(False)
             self.launch_main()
 
-        frm = Frame(self.root)
+        frm = Frame(top)
 
         user_os = sys.platform
-        if user_os == 'linux':
-            Label(master=frm,text='This application is designed to make use of the cron scheduler to '
-                                  'automatically perform most of it\'s functions. While you *should* have'
-                                  'no issues with just manually updating as you go, for sake of ease I would reccomend '
-                                  'enabling it and setting the delay as desired. The default settings are a 30 minute'
-                                  'delay from startup before concert data is updated from the web, and a one hour delay'
-                                  'before the window with the upcoming concerts is displayed' ,wraplength=500).pack()
-            b1 = Button(master=frm,text='Use Default Settings',command=default_button)
-            b2 = Button(master=frm,text='Custom Settings',command=custom_button)
-            b3 = Button(master=frm,text='Disable Automatic Startup',command=disable_button)
-            b1.pack(),b2.pack(),b3.pack()
+        if user_os != 'Win32GUI':
+            Label(master=frm, text='This application is designed to make use of the cron scheduler to '
+                                   'automatically perform most of it\'s functions. While you *should* have'
+                                   'no issues with just manually updating as you go, for sake of ease I would reccomend '
+                                   'enabling it and setting the delay as desired. The default settings are a 30 minute'
+                                   'delay from startup before concert data is updated from the web, and a one hour delay'
+                                   'before the window with the upcoming concerts is displayed', wraplength=500).pack()
+            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
+            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
+            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
+            b1.pack(), b2.pack(), b3.pack()
             frm.pack()
-        else: self.add_to_startup()
+        else:
+            windows_text = '''Unless you know for certain that you will never want to have this program automatically
+                              run it is recommended that you follow these steps. With this method, toggling automatic 
+                              execution can be easily modified though this program. If you do not wish to do this now or
+                              have no intent of using this feature, click disable below, otherwise follow these instructions.
 
-    def add_to_startup_default(self):
+                              In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
+                              'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
+                              From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
+                              or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
+                              and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
+                              shown below into this box and hit next. To complete the setup hit Finish. 
+
+                              Once you have done that, select how you would like to proceed.
+                           '''
+            Label(master=frm, text=windows_text, wraplength=500).pack()
+            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
+            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
+            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
+            b1.pack(), b2.pack(), b3.pack()
+
+    def add_to_startup_default(self, parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
         an hour after startup for the main GUI to launch"""
+
         def cont_button():
             usr = ent.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr)
-            cronfrm_default.destroy()
+            self.scheduler.enabledisable(True)
+            if sys.platform != 'WIN32GUI':
+                self.scheduler.cron_setup(usr)
+
             self.launch_main()
 
-        cronfrm_default = Frame(self.root)
+        cronfrm_default = Frame(parent)
 
-        Label(master=cronfrm_default,text='Enter your linux username, i.e. usr in home/usr').pack()
-        ent = Entry(master=cronfrm_default,)
+        Label(master=parent,
+              text='If you are on linux or macOS, enter your linux username, i.e. usr in home/usr, otherwise'
+                   'just hit Continue').pack()
+        ent = Entry(master=cronfrm_default)
+        ent.delete(0, END)
+        ent.insert(0, str(self.scheduler.user))
         ent.pack()
-        Button(master=cronfrm_default,text='Continue',command=cont_button).pack()
+        Button(master=cronfrm_default, text='Continue', command=cont_button).pack()
         cronfrm_default.pack()
 
-    def add_to_startup_custom(self):
+    def add_to_startup_custom(self, parent=None):
         """Creates a cron job with user specified delays for the web scraper and GUI"""
+
         def cont_button_custom():
+            self.scheduler.cron_enable(True)
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr,int(scraper_delay),int(gui_delay))
-            cronfrm_custom.destroy()
+            if sys.platform != 'WIN32GUI':
+                self.scheduler.cron_setup(usr)
+            self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             self.launch_main()
 
-        cronfrm_custom = Frame(self.root)
+        cronfrm_custom = Frame(parent)
         cronfrm_custom.pack()
-        Label(master=cronfrm_custom,text='Enter your linux username, i.e. usr in home/usr').pack()
-        entusr =Entry(master=cronfrm_custom)
+        Label(master=cronfrm_custom, text='''If you are on linux or macOS, enter your linux username, i.e. usr 
+        in home/usr, otherwise leave this blank.''').pack()
+        entusr = Entry(master=cronfrm_custom)
+        entusr.delete(0, END)
+        entusr.insert(0, self.scheduler.user)
         entusr.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
-                                                      'before the application updates concert data from the internet').pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
+                                          'before the application updates concert data from the internet').pack()
         entdelay1 = Entry(master=cronfrm_custom)
+        entdelay1.delete(0, END)
+        entdelay1.insert(0, str(self.scheduler.web_scraper_delay))
         entdelay1.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
-                                                      'before the window containing upcoming concert data is opened').pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
+                                          'before the window containing upcoming concert data is opened').pack()
         entdelay2 = Entry(master=cronfrm_custom)
+        entdelay2.delete(0, END)
+        entdelay2.insert(0, str(self.scheduler.gui_launch_delay))
         entdelay2.pack()
-        Button(master=cronfrm_custom,text='Submit',command=cont_button_custom).pack()
+        Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
 
     # Launches the main GUI
 
@@ -499,7 +532,6 @@ class Main_GUI:
             self.queue_check()
 
         self.root.mainloop()
-
 
 
 
@@ -648,9 +680,7 @@ class Main_GUI:
     def add_to_startup(self):
         """Used for modification of the startup settings"""
         top = Toplevel()
-        if self.scheduler.system != 'linux/mac':
-            top.destroy()
-            return
+        self.scheduler = initialize_scheduler()
 
         def default_button():
             frm.destroy()
@@ -662,13 +692,14 @@ class Main_GUI:
 
         def disable_button():
             frm.destroy()
-            self.scheduler.cron_enable(False)
+            self.scheduler.enabledisable(False)
             top.destroy()
+
 
         frm = Frame(top)
 
         user_os = sys.platform
-        if user_os == 'linux':
+        if user_os != 'Win32GUI':
             Label(master=frm, text='This application is designed to make use of the cron scheduler to '
                                    'automatically perform most of it\'s functions. While you *should* have'
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
@@ -680,19 +711,42 @@ class Main_GUI:
             b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
             b1.pack(), b2.pack(), b3.pack()
             frm.pack()
+        else:
+            windows_text = '''Unless you know for certain that you will never want to have this program automatically
+                              run it is recommended that you follow these steps. With this method, toggling automatic 
+                              execution can be easily modified though this program. If you do not wish to do this now or
+                              have no intent of using this feature, click disable below, otherwise follow these instructions.
+                              
+                              In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
+                              'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
+                              From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
+                              or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
+                              and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
+                              shown below into this box and hit next. To complete the setup hit Finish. 
+                               
+                              Once you have done that, select how you would like to proceed.
+                           '''
+            Label(master=frm,text=windows_text,wraplength=500).pack()
+            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
+            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
+            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
+            b1.pack(), b2.pack(), b3.pack()
 
     def add_to_startup_default(self,parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
         an hour after startup for the main GUI to launch"""
+
         def cont_button():
             usr = ent.get()
-            self.scheduler.cron_enable(True)
-            self.scheduler.cron_setup(usr)
+            self.scheduler.enabledisable(True)
+            if sys.platform != 'WIN32GUI':
+                self.scheduler.cron_setup(usr)
             parent.destroy()
 
         cronfrm_default = Frame(parent)
 
-        Label(master=parent, text='Enter your linux username, i.e. usr in home/usr').pack()
+        Label(master=parent, text='If you are on linux or macOS, enter your linux username, i.e. usr in home/usr, otherwise'
+                                  'just hit Continue').pack()
         ent = Entry(master=cronfrm_default )
         ent.delete(0,END)
         ent.insert(0,str(self.scheduler.user))
@@ -707,24 +761,26 @@ class Main_GUI:
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr, int(scraper_delay), int(gui_delay))
+            if sys.platform != 'WIN32GUI':
+                self.scheduler.cron_setup(usr)
+            self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             parent.destroy()
 
         cronfrm_custom = Frame(parent)
         cronfrm_custom.pack()
-        Label(master=cronfrm_custom, text='Enter your linux username, i.e. usr in home/usr').pack()
+        Label(master=cronfrm_custom, text='''If you are on linux or macOS, enter your linux username, i.e. usr 
+        in home/usr, otherwise leave this blank.''').pack()
         entusr = Entry(master=cronfrm_custom)
         entusr.delete(0,END)
         entusr.insert(0,self.scheduler.user)
         entusr.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
                                           'before the application updates concert data from the internet').pack()
         entdelay1 = Entry(master=cronfrm_custom)
         entdelay1.delete(0,END)
         entdelay1.insert(0,str(self.scheduler.web_scraper_delay))
         entdelay1.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
                                           'before the window containing upcoming concert data is opened').pack()
         entdelay2 = Entry(master=cronfrm_custom)
         entdelay2.delete(0,END)
@@ -792,7 +848,7 @@ class SpotifyUpdate:
         fr = Label(self.root,text='Updating Playlists - Please Wait')
         fr.pack()
         self.root.update()
-        self.spotifyapp = spot.SpotifyIntegration(user_id)
+        self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id)
         self.spotifyapp = self.spotifyapp()
         playlists = next(self.spotifyapp)
         fr.destroy()
@@ -848,15 +904,7 @@ class SpotifyUpdate:
         for band in artists:
             spot_selbands_choices.insert(END,band)
 
-
-
-
-
-    #test.first_time_startup_events(s)
     uid = '1214002279'
-
-    #FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
-    #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
 
 
 if __name__ == '__main__':
