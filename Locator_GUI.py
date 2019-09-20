@@ -183,7 +183,7 @@ class FirstTimeStartup:
             f = Label(master=self.root,text='Getting Playlist Data - Please Wait')
             f.pack()
             self.root.update()
-            self.spotifyapp = spot.SpotifyIntegration(user_id)
+            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id)
             self.spotifyapp = self.spotifyapp()
             playlists = next(self.spotifyapp)
             f.destroy()
@@ -340,6 +340,7 @@ class FirstTimeStartup:
             b3 = Button(master=frm,text='Disable Automatic Startup',command=disable_button)
             b1.pack(),b2.pack(),b3.pack()
             frm.pack()
+        else: self.add_to_startup()
 
     def add_to_startup_default(self):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,

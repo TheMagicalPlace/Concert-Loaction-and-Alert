@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from http import server
 import socketserver
-from os import getcwd,fchdir
+from os import getcwd
 import os
 
 from spotipy import oauth2,SpotifyException

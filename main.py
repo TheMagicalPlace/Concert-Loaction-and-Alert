@@ -11,11 +11,11 @@ from Notifier import Notifications
 if __name__ =='__main__':
     """Checks if there is a user_settings file, and if not launches the first time startup"""
     os.chdir(os.getcwd())
-    logging.log(sys.platform)
+    logging.debug(sys.platform)
     try:
         with open('user_settings','r') as usr:
             data = json.load(usr)
-            logging.log(data['last_checked'])
+            logging.debug(data['last_checked'])
     except FileNotFoundError:
         startup_gui = Tk()
         FirstTimeStartup(startup_gui)
