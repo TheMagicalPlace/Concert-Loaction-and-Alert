@@ -327,7 +327,7 @@ class FirstTimeStartup:
         frm = Frame(top)
 
         user_os = sys.platform
-        if user_os != 'Win32GUI':
+        if user_os != 'win32':
             Label(master=frm, text='This application is designed to make use of the cron scheduler to '
                                    'automatically perform most of it\'s functions. While you *should* have'
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
@@ -367,7 +367,7 @@ class FirstTimeStartup:
         def cont_button():
             usr = ent.get()
             self.scheduler.enabledisable(True)
-            if sys.platform != 'WIN32GUI':
+            if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
 
             self.launch_main()
@@ -392,7 +392,7 @@ class FirstTimeStartup:
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            if sys.platform != 'WIN32GUI':
+            if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
             self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             self.launch_main()
@@ -699,7 +699,7 @@ class Main_GUI:
         frm = Frame(top)
 
         user_os = sys.platform
-        if user_os != 'Win32GUI':
+        if user_os != 'win32':
             Label(master=frm, text='This application is designed to make use of the cron scheduler to '
                                    'automatically perform most of it\'s functions. While you *should* have'
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
@@ -712,25 +712,27 @@ class Main_GUI:
             b1.pack(), b2.pack(), b3.pack()
             frm.pack()
         else:
-            windows_text = '''Unless you know for certain that you will never want to have this program automatically
-                              run it is recommended that you follow these steps. With this method, toggling automatic 
-                              execution can be easily modified though this program. If you do not wish to do this now or
-                              have no intent of using this feature, click disable below, otherwise follow these instructions.
-                              
-                              In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
-                              'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
-                              From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
-                              or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
-                              and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
-                              shown below into this box and hit next. To complete the setup hit Finish. 
-                               
-                              Once you have done that, select how you would like to proceed.
+            windows_text = '''
+            Unless you know for certain that you will never want to have this program automatically
+            run it is recommended that you follow these steps. With this method, toggling automatic 
+            execution can be easily modified though this program. If you do not wish to do this now or
+            have no intent of using this feature, click disable below, otherwise follow these instructions.
+          
+            In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
+            'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
+            From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
+            or 'When I log on' as further time delay can be configured later. From there hit Next, 
+            select 'Start a Program' and hit Next again. You should see an imput box with 'Program/script:' above it. 
+            Copy the file path shown below into this box and hit next. To complete the setup hit Finish. 
+           
+            Once you have done that, select how you would like to proceed.
                            '''
-            Label(master=frm,text=windows_text,wraplength=500).pack()
+            Label(master=frm,text=str(windows_text),wraplength=600,anchor=W).pack()
             b1 = Button(master=frm, text='Use Default Settings', command=default_button)
             b2 = Button(master=frm, text='Custom Settings', command=custom_button)
             b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
             b1.pack(), b2.pack(), b3.pack()
+            frm.pack()
 
     def add_to_startup_default(self,parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
@@ -739,7 +741,7 @@ class Main_GUI:
         def cont_button():
             usr = ent.get()
             self.scheduler.enabledisable(True)
-            if sys.platform != 'WIN32GUI':
+            if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
             parent.destroy()
 
@@ -761,7 +763,7 @@ class Main_GUI:
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            if sys.platform != 'WIN32GUI':
+            if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
             self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             parent.destroy()
@@ -786,6 +788,7 @@ class Main_GUI:
         entdelay2.delete(0,END)
         entdelay2.insert(0,str(self.scheduler.gui_launch_delay))
         entdelay2.pack()
+
         Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
 
     def view_startup_settings(self):
