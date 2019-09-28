@@ -131,8 +131,8 @@ class FirstTimeStartup:
             return val
 
         frame2 = Frame(self.root)
-        message2text = ' In order to only keep track of nearby concerts, your location is requred. Please input' \
-                       'the location you would like to track from in the form City,State. Note that this application is' \
+        message2text = ' In order to only keep track of nearby concerts, your location is requred. Please input ' \
+                       'the location you would like to track from in the form City,State. Note that this application is ' \
                        'currently limited to only United States residents'
         message2 = Label(frame2, text=message2text,wraplength=500)
         location_input = Entry(frame2)
@@ -164,11 +164,15 @@ class FirstTimeStartup:
         spotint = Frame(self.root)
         spotint_text = Label(spotint,text='Would you like to use one (or more) of your spotify playlists in order to '
                                           'determine what bands to track?',wraplength=500)
-        spotint_yes = Button(spotint,text='Yes')
-        spotint_no = Button(spotint,text='No')
+        bfrm = Frame(master=spotint)
+        spotint_yes = Button(bfrm,text='Yes')
+        spotint_no = Button(bfrm,text='No')
+
         spotint_yes.bind('<Button-1>',spotint_yes_button)
         spotint_no.bind('<Button-1>', spotint_no_button)
-        spotint_text.pack(),spotint_yes.pack(),spotint_no.pack()
+        spotint_yes.grid(row=0, colunm=0), spotint_no.grid(row=0, colunm=1)
+        spotint_text.pack(),
+        bfrm.pack()
         spotint.pack()
 
     def spotify_setup_user_input(self):
@@ -324,22 +328,20 @@ class FirstTimeStartup:
             self.scheduler.enabledisable(False)
             self.launch_main()
 
-        frm = Frame(top)
+        frm = Frame(self.root)
 
         user_os = sys.platform
+
         if user_os != 'win32':
             Label(master=frm, text='This application is designed to make use of the cron scheduler to '
                                    'automatically perform most of it\'s functions. While you *should* have'
-                                   'no issues with just manually updating as you go, for sake of ease I would reccomend '
+                                   'no issues with just manually updating as you go, for sake of ease I would recommend '
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
-                                   'before the window with the upcoming concerts is displayed', wraplength=500).pack()
-            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
-            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
-            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
-            b1.pack(), b2.pack(), b3.pack()
-            frm.pack()
+                                   'before the window with the upcoming concerts is displayed',
+                  wraplength=500).pack()
         else:
+
             windows_text = '''Unless you know for certain that you will never want to have this program automatically
                               run it is recommended that you follow these steps. With this method, toggling automatic 
                               execution can be easily modified though this program. If you do not wish to do this now or
@@ -351,14 +353,17 @@ class FirstTimeStartup:
                               or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
                               and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
                               shown below into this box and hit next. To complete the setup hit Finish. 
+                              
+                              Once you have done that, select how you would like to proceed.'''
+            Label(master=frm,text=windows_text,wraolength=500).pack()
+        bfrm = Frame(master=frm)
+        b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
+        b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
+        b3 = Button(master=bfrm, text='Disable Automatic Startup', command=disable_button)
+        b1.grid(row=0, column=0), b2.grid(row=0, column=1), b3.grid(row=0, column=2)
+        bfrm.pack()
+        frm.pack()
 
-                              Once you have done that, select how you would like to proceed.
-                           '''
-            Label(master=frm, text=windows_text, wraplength=500).pack()
-            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
-            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
-            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
-            b1.pack(), b2.pack(), b3.pack()
 
     def add_to_startup_default(self, parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
@@ -367,9 +372,10 @@ class FirstTimeStartup:
         def cont_button():
             usr = ent.get()
             self.scheduler.enabledisable(True)
+            self.scheduler.activation_delay()
             if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
-
+            cronfrm_default.destroy()
             self.launch_main()
 
         cronfrm_default = Frame(parent)
@@ -394,6 +400,7 @@ class FirstTimeStartup:
             gui_delay = entdelay2.get()
             if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
+            cronfrm_custom.destroy()
             self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             self.launch_main()
 
@@ -430,7 +437,7 @@ class FirstTimeStartup:
             main_gui = Main_GUI(master)
             main_gui()
         def later_button():
-
+            self.root.destroy()
             def process_queue():
                 try:
                     self.queue.get()
@@ -443,7 +450,7 @@ class FirstTimeStartup:
                     main_gui = Main_GUI(master)
                     main_gui()
             process_queue()
-            self.root.withdraw()
+
 
         frm = Frame(master=self.root)
         frm.pack()
@@ -547,9 +554,21 @@ class Main_GUI:
 
     def displaybar(self,parent,iter_data,framedimensions):
         """This is used to display & format the concert data in a (sort of) aesthetic format"""
+
+        dbframe = Frame(master=parent)
+        dbframe.pack()
+        scrollbar = Scrollbar(dbframe)
+        innerholder = Canvas(master=dbframe,height=600,width=970,yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side=RIGHT, fill=Y)
+        n = Frame(master=innerholder)
+
+
+        innerholder.pack(side='left')
+        innerholder.create_window(0, 0, window=n,anchor=NW)
         for row in iter_data:
             r = iter_data.index(row)
-            if r == 0: Label(parent,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
+            if r == 0: Label(n,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
             else: r+=1
             for val in row:
                 if row.index(val) == 0:
@@ -559,7 +578,8 @@ class Main_GUI:
                         print(val)
                         value = val
                 else: value = val
-                Label(parent,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+                Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+        scrollbar.config(command=innerholder.yview)
 
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
@@ -706,33 +726,18 @@ class Main_GUI:
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
                                    'before the window with the upcoming concerts is displayed',wraplength=500).pack()
-            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
-            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
-            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
-            b1.pack(), b2.pack(), b3.pack()
-            frm.pack()
+
         else:
-            windows_text = '''
-            Unless you know for certain that you will never want to have this program automatically
-            run it is recommended that you follow these steps. With this method, toggling automatic 
-            execution can be easily modified though this program. If you do not wish to do this now or
-            have no intent of using this feature, click disable below, otherwise follow these instructions.
-          
-            In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
-            'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
-            From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
-            or 'When I log on' as further time delay can be configured later. From there hit Next, 
-            select 'Start a Program' and hit Next again. You should see an imput box with 'Program/script:' above it. 
-            Copy the file path shown below into this box and hit next. To complete the setup hit Finish. 
-           
-            Once you have done that, select how you would like to proceed.
-                           '''
-            Label(master=frm,text=str(windows_text),wraplength=600,anchor=W).pack()
-            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
-            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
-            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
-            b1.pack(), b2.pack(), b3.pack()
-            frm.pack()
+            Label(master=frm,text='The default settings are a 30 minute ' \
+                           'delay from startup before concert data is updated from the web, and a one hour delay ' \
+                           'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+        bfrm = Frame(master=frm)
+        b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
+        b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
+        b3 = Button(master=bfrm, text='Disable Automatic Startup', command=disable_button)
+        b1.grid(row=0,column=0), b2.grid(row=0,column=1), b3.grid(row=0,column=2)
+        bfrm.pack()
+        frm.pack()
 
     def add_to_startup_default(self,parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
@@ -741,6 +746,7 @@ class Main_GUI:
         def cont_button():
             usr = ent.get()
             self.scheduler.enabledisable(True)
+            self.scheduler.activation_delay()
             if sys.platform != 'win32':
                 self.scheduler.cron_setup(usr)
             parent.destroy()
@@ -797,8 +803,8 @@ class Main_GUI:
         if self.scheduler.init_on_startup:
 
             Label(master=main_frame,text=f'Launch on startup: Enabled').pack()
-            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay//60} Minutes after startup').pack()
-            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay} Minutes after startup').pack()
+            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay} Minutes after startup').pack()
         else:
             Label(master=main_frame,text='Launch on startup: Disabled').pack()
             Label(master=main_frame,
