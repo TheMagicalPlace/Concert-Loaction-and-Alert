@@ -95,10 +95,9 @@ class SchedulerWindows(SchedulerGeneric):
         print('\n',self.path_to_interp,'\n',self.current_directory)
         with open('Startup_Init.bat','w') as startup:
             startup.write('echo off\nsetlocal\nset STARTUP=yes\n')
-            startup.write(self.path_to_interp+' ')
-            startup.write(self.current_directory)
+            startup.write(self.path_to_interp)
             startup.write('\nendlocal')
-        startup_file = getcwd()+'/Startup_Init.bat'
+        startup_file = getcwd()+'/concerttracker.bat'
         return startup_file
 
     def enabledisable(self,enabled):

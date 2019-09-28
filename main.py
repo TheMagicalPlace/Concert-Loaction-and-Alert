@@ -76,6 +76,9 @@ def user_startup():
         root.mainloop()
 
 if __name__ =='__main__':
+    import scheduler_setup
+    s = scheduler_setup.SchedulerWindows()
+    s.create_startup_file()
     """if the program is started through the created bat file (on windows) or by a cron job (on unix systems) 
     the autostartup is run based on user settings, otherwise the program assumes that the user is starting
     the application manually"""

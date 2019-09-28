@@ -3,6 +3,7 @@ from time import sleep
 from tkinter import *
 import threading
 import queue
+from os import getcwd
 
 from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
@@ -341,7 +342,7 @@ class FirstTimeStartup:
                   wraplength=500).pack()
         else:
 
-            windows_text = '''Unless you know for certain that you will never want to have this program automatically
+            windows_text = f'''Unless you know for certain that you will never want to have this program automatically
                               run it is recommended that you follow these steps. With this method, toggling automatic 
                               execution can be easily modified though this program. If you do not wish to do this now or
                               have no intent of using this feature, click disable below, otherwise follow these instructions.
@@ -350,8 +351,10 @@ class FirstTimeStartup:
                               'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
                               From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
                               or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
-                              and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
+                              and hit Next again. You should see an input box with 'Program/script:' above it. Copy the file path
                               shown below into this box and hit next. To complete the setup hit Finish. 
+                              
+                              File Path = {getcwd()+'/concerttracker.bat'}
                               
                               Once you have done that, select how you would like to proceed.'''
             Label(master=frm,text=windows_text,wraolength=500).pack()
@@ -721,7 +724,8 @@ class Main_GUI:
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
-                                   'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+                                   'before the window with the upcoming concerts is displayed'
+                                   '',wraplength=500).pack()
 
         else:
             Label(master=frm,text='The default settings are a 30 minute ' \
