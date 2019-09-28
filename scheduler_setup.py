@@ -88,8 +88,8 @@ class SchedulerLinux(SchedulerGeneric):
 class SchedulerWindows(SchedulerGeneric):
     def __init__(self):
         super().__init__()
-        self.path_to_interp =sys.executable+'/python.exe'
-        self.current_directory = getcwd()+'/startup_file.py'
+        self.path_to_interp ='"'+sys.executable+'\python.exe'+'"'
+        self.current_directory = '"'+getcwd()+'\startup_file.py'+'"'
 
     def create_startup_file(self):
         print('\n',self.path_to_interp,'\n',self.current_directory)
@@ -112,3 +112,4 @@ class SchedulerWindows(SchedulerGeneric):
 
 if __name__ == '__main__':
     sch = SchedulerWindows()
+    sch.create_startup_file()
