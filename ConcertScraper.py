@@ -23,11 +23,11 @@ class ConcertFinder:
     hms_format = re.compile(r'(?<=\d{4}-\d{2}-\d{2}T)(\d{2}:\d{2}:\d{2})')
 
     def __init__(self):
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             self.bands = data['bands']
             data['last_checked'] = datetime.date.today().isoformat()
-        with open('user_settings','w') as settings:
+        with open('userdata\\user_settings','w') as settings:
             json.dump(data,settings)
 
         # used to modify band names to be web search and SQL database friendly
@@ -49,9 +49,9 @@ class ConcertFinder:
         path = Path('./concert_db.db')
         try:
             assert path.exists() is True
-            self.concert_database = sqlite.connect('concert_db.db')
+            self.concert_database = sqlite.connect('userdata\\concert_db.db')
         except AssertionError:
-            self.concert_database = sqlite.connect('concert_db.db')
+            self.concert_database = sqlite.connect('userdata\\concert_db.db')
 
     def _website_search_songkick(self,band,concert_dates=None):
         """Searches out concerts from songkick based on the bands in user_settings"""

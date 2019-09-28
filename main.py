@@ -10,7 +10,7 @@ from Notifier import Notifications
 def activation_delay():
     '''This method is used to automatically update the upcoming concerts & is run on a delayed timer to
     run ~ 30 minutes after startup (or if the application is open for >24 hours, once every 24 hours'''
-    with open('user_settings','r') as settings:
+    with open('userdata\\user_settings','r') as settings:
         last_checked = json.load(settings)['last_checked']
     if last_checked != datetime.date.today().isoformat():
         concert_finder = CFinder()
@@ -27,10 +27,10 @@ def autostartup():
     # really, this should never except unless
     # the user has deleted their files from the first time startup for some reason
     try:
-        with open('user_settings', 'r') as usr:
+        with open('userdata\\user_settings', 'r') as usr:
             data = json.load(usr)
             print(data['last_checked'])
-        with open('schedule_settings', 'r') as schedule:
+        with open('userdata\\schedule_settings', 'r') as schedule:
             sch = json.load(schedule)
             if sch['init_on_startup']:
                 web_scraper_delay = int(sch['web_scraper_delay'])*60
@@ -59,7 +59,7 @@ def autostartup():
 
 def user_startup():
     try:
-        with open('user_settings', 'r') as usr:
+        with open('userdata\\user_settings', 'r') as usr:
             data = json.load(usr)
             logging.debug(data['last_checked'])
     except FileNotFoundError:
@@ -76,12 +76,15 @@ def user_startup():
         root.mainloop()
 
 if __name__ =='__main__':
-    import scheduler_setup
-    s = scheduler_setup.SchedulerWindows()
-    s.create_startup_file()
+
+    if not os.path.exists('.\\userdata\\'):
+        os.makedirs('.\\userdata\\')
+
+
     """if the program is started through the created bat file (on windows) or by a cron job (on unix systems) 
     the autostartup is run based on user settings, otherwise the program assumes that the user is starting
     the application manually"""
+
     try:
         os.environ['STARTUP']
     except KeyError:

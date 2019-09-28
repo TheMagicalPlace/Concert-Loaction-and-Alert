@@ -14,7 +14,7 @@ class LocationFilter:
     bands = []
 
     def __init__(self):
-        with open('user_settings', 'r') as settings:
+        with open('userdata\\user_settings', 'r') as settings:
             data = json.load(settings)
             for key, value in data.items():
                 if key == 'last_checked':

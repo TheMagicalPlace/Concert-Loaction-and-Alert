@@ -5,7 +5,7 @@ import json
 import requests
 from bs4 import BeautifulSoup as soup
 from geopy import geocoders
-
+import os
 
 class LocatorSetup:
     """The (poorly named) class containing the methods used to format and save the data from the first
@@ -98,7 +98,7 @@ class LocatorSetup:
                 'last_checked':self.last_checked,
                 'concert_notification_time_to_display':self.concert_notification_time_to_display,# weeks, default time until concert to present notifications
                 'removed_bands':self.removed_bands}
-        with open('user_settings','w') as settings:
+        with open(f'userdata\\user_settings','w') as settings:
             json.dump(data,settings)
 
 class LocatorMain(LocatorSetup):
@@ -146,3 +146,6 @@ class LocatorMain(LocatorSetup):
         self.concert_notification_time_to_display = ttd
         self.save_data()
 
+if __name__ == '__main__':
+    l = LocatorMain()
+    l.save_data()

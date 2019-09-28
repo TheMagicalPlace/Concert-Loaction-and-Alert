@@ -158,6 +158,7 @@ class FirstTimeStartup:
         def spotint_no_button(event):
             print('no registered')
             spotint.destroy()
+            self.user_data_setup.send(None)
             self.manual_band_input()
             pass
 
@@ -170,7 +171,7 @@ class FirstTimeStartup:
 
         spotint_yes.bind('<Button-1>',spotint_yes_button)
         spotint_no.bind('<Button-1>', spotint_no_button)
-        spotint_yes.grid(row=0, colunm=0), spotint_no.grid(row=0, colunm=1)
+        spotint_yes.grid(row=0, column=0), spotint_no.grid(row=0, column=1)
         spotint_text.pack(),
         bfrm.pack()
         spotint.pack()
@@ -272,7 +273,6 @@ class FirstTimeStartup:
         def message2_button(event):
             val = band_input.get()
             print(val)
-            self.user_data_setup.send('Not Given')
             self.user_data_setup.send(val)
             band_in_frame.destroy()
             self.concert_lookup()
@@ -292,6 +292,10 @@ class FirstTimeStartup:
         This spawns a seperate thread to run the web scraper"""
         def lookup_yes_action():
             lookup.destroy()
+            try:
+                next(self.user_data_setup)
+            except StopIteration:
+                pass
             self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
             self.add_to_startup()
 
@@ -354,10 +358,10 @@ class FirstTimeStartup:
                               and hit Next again. You should see an input box with 'Program/script:' above it. Copy the file path
                               shown below into this box and hit next. To complete the setup hit Finish. 
                               
-                              File Path = {getcwd()+'/concerttracker.bat'}
+                              File Path = {getcwd()+'/concert_tracker_startup.bat'}
                               
                               Once you have done that, select how you would like to proceed.'''
-            Label(master=frm,text=windows_text,wraolength=500).pack()
+            Label(master=frm,text=windows_text,wraplength=500).pack()
         bfrm = Frame(master=frm)
         b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
         b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
@@ -387,7 +391,11 @@ class FirstTimeStartup:
                    'just hit Continue').pack()
         ent = Entry(master=cronfrm_default)
         ent.delete(0, END)
-        ent.insert(0, str(self.scheduler.user))
+
+        try:
+            ent.insert(0,str(self.scheduler.user))
+        except AttributeError:
+            pass
         ent.pack()
         Button(master=cronfrm_default, text='Continue', command=cont_button).pack()
         cronfrm_default.pack()
@@ -484,7 +492,6 @@ class Main_GUI:
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
         self.queue = queue.Queue()
-        self.concert_database = sqlite.connect('concert_db.db')
         self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
@@ -546,7 +553,7 @@ class Main_GUI:
 
     def update_GUI_variables(self):
         """updates the instance variables after user_settings is changed"""
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             for key,value in data.items():
                 if key == 'last_checked':
@@ -851,7 +858,7 @@ class SpotifyUpdate:
     the sequential order used in FirstTimeStartup"""
     def __init__(self,parent,removed=None):
         self.root = parent
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             user_id = data['spotify_id']
         fr = Label(self.root,text='Updating Playlists - Please Wait')

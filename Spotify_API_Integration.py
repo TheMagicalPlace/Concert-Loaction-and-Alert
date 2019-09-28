@@ -73,7 +73,7 @@ class SpotifyIntegration:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    with open('user_settings','r') as settings:
+    with open('userdata\\user_settings','r') as settings:
         data = json.load(settings)
         user_id = data['spotify_id']
 
