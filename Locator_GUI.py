@@ -1,19 +1,18 @@
 
 from time import sleep
-import Spotify_API_Integration as spot
-from ModifyUserSettings import LocatorSetup,LocatorMain
-from ConcertScraper import ConcertFinder as CFinder
 from tkinter import *
-import sqlite3 as sqlite
-import json
-from copy import copy
 import threading
-import sys
 import queue
-from scheduler_setup import *
+
+from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
 from Notifier import *
+import Spotify_API_Integration as spot
+from ModifyUserSettings import LocatorSetup,LocatorMain
+
 stop_all_threads = False
+
+
 
 class TkinterEventSubprocess(threading.Thread):
     """class used to spawn threads in the Tkinter widgets (hopefully) without breaking anything"""
@@ -638,9 +637,6 @@ class Main_GUI:
             band_in_frame.destroy()
             self.update_GUI_variables()
             top.destroy()
-
-
-
 
         band_in_frame = Frame(top)
         frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')

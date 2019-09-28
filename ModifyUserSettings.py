@@ -1,8 +1,10 @@
 
+
+import json
+
 import requests
 from bs4 import BeautifulSoup as soup
 from geopy import geocoders
-import json
 
 
 class LocatorSetup:

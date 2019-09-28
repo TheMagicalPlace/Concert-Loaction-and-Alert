@@ -2,15 +2,18 @@
 
 
 import re
-import bs4
-import requests
 from collections import defaultdict
 import sqlite3 as sqlite
-from LocationFilter import LocationFilter
 from pathlib import Path
 import json as json
 import datetime
 import logging
+
+import bs4
+import requests
+
+from LocationFilter import LocationFilter
+
 class ConcertFinder:
     """Contains the methods used in the lookup of concerts near the user's given location and save them
     to a database"""
@@ -57,6 +60,7 @@ class ConcertFinder:
             params = {'page':page,'per_page':15,'query':self.bandwb[band],'type':'upcoming'}
             try:
                 yeet = requests.get(f'https://www.songkick.com/search',params=params,timeout=30) # i refuse to change this
+
             # timeouts are just skipped over, as a rule of thumb 2-3 runs are needed to get info for large amounts of bands
             except requests.exceptions.ConnectionError as timeout:
                 logging.info(timeout)
@@ -64,11 +68,13 @@ class ConcertFinder:
             except requests.exceptions.ReadTimeout as rtimeout:
                 logging.info(rtimeout)
                 continue
+
             #parsing the html response
             concpage = bs4.BeautifulSoup(yeet.text,features="html.parser")
             concpage = concpage.select('li[class="concert event"]')
 
             for concert in concpage:
+
                 date = concert.select('time[datetime]')
                 datestr = str(*date[0].attrs.values())
                 date_time_list = re.findall(self.ymd_format,datestr)+re.findall(self.hms_format,datestr) \
@@ -83,6 +89,7 @@ class ConcertFinder:
                         continue #
                 self.concerts[date[0].getText()].append(date_time_list)
                 location = concert.select('p[class="location"]')
+
                 # breaks up the location info into something usable for geolocation lookup
                 wsp = re.compile(r'(?:\s)+(\S+|[ ,]?)',re.MULTILINE.DOTALL)
                 location = " ".join(wsp.findall(location[0].getText())[1:])
@@ -94,9 +101,6 @@ class ConcertFinder:
     def _band_info_write(self,band,cur):
         """Takes the isolated info from the website search and saves it to the database. Note that this
         entire method takes place within the context manager of its caller"""
-        # TODO convert to UTC and input it into the database via sqlite's builtins for the time module
-        # TODO reformat database to keep track of distance & not overwrite location
-
 
         for _,vals in self.concerts.items():
             'the format for enteries is as follows (Date of concert,location of concert (Venue,City,State),Distance to' \

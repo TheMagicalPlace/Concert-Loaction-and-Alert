@@ -1,8 +1,8 @@
 import sys
-from crontab import CronTab
 import json
 from os import getcwd
-from collections import abc
+
+from crontab import CronTab
 
 
 def initialize_scheduler():
@@ -79,7 +79,7 @@ class SchedulerLinux(SchedulerGeneric):
         else:
             startup = cron.new(f'export DISPLAY=:0 && python3 {getcwd()}/startup_file.py',comment='concert_location_and_alert')
             startup.every_reboot()
-            startup.env['IS_RUN_BY_CRON'] = True
+            startup.env['STARTUP'] = 'yes'
             cron.write()
         self.write_settings()
 
@@ -88,15 +88,16 @@ class SchedulerLinux(SchedulerGeneric):
 class SchedulerWindows(SchedulerGeneric):
     def __init__(self):
         super().__init__()
-        self.path_to_interp ='"'+sys.executable+'\python.exe'+'"'
-        self.current_directory = '"'+getcwd()+'\startup_file.py'+'"'
+        self.path_to_interp ='"'+sys.executable+'"'
+        self.current_directory = '"'+getcwd()+'\main.py'+'"'
 
     def create_startup_file(self):
         print('\n',self.path_to_interp,'\n',self.current_directory)
         with open('Startup_Init.bat','w') as startup:
+            startup.write('echo off\nsetlocal\nset STARTUP=yes\n')
             startup.write(self.path_to_interp+' ')
             startup.write(self.current_directory)
-            startup.write('\npause')
+            startup.write('\nendlocal')
         startup_file = getcwd()+'/Startup_Init.bat'
         return startup_file
 

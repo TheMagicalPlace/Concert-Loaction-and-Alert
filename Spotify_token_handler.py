@@ -12,6 +12,7 @@ from urllib.parse import urlparse, parse_qs
 
 import requests
 import spotipy
+
 REDIRECT_URI = 'http://localhost:8080/index.html'
 PORT = 8080
 

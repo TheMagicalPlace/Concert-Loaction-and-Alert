@@ -1,8 +1,9 @@
 
 import json as json
+from time import sleep
+
 from geopy import geocoders,distance,exc as geopy_exc
 import requests
-from time import sleep
 
 class LocationFilter:
 
