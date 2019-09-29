@@ -124,6 +124,9 @@ class LocatorMain(LocatorSetup):
         self.spotify_user_id = None
         self.save_data()
 
+    def save_spotify_username(self,user_id):
+        self.spotify_user_id = user_id
+        self.save_data()
 
     def add_bands(self,bands):
         super().get_bands(bands)

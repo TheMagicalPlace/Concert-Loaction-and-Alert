@@ -27,8 +27,6 @@ if __name__ == '__main__':
     testing = False  # Should be False except for testing and debugging
     os.chdir(os.getcwd())
 
-    print(sys.platform)
-
     try:
         with open('user_settings', 'r') as usr:
             data = json.load(usr)
@@ -36,8 +34,8 @@ if __name__ == '__main__':
         with open('schedule_settings', 'r') as schedule:
             sch = json.load(schedule)
             if sch['init_on_startup']:
-                web_scraper_delay = int(sch['web_scraper_delay'])*60
-                gui_launch_delay = int(sch['gui_launch_delay'])*60
+                web_scraper_delay = int(sch['web_scraper_delay'])
+                gui_launch_delay = int(sch['gui_launch_delay'])
             else:
                 web_scraper_delay, gui_launch_delay = None, None
     except FileNotFoundError:

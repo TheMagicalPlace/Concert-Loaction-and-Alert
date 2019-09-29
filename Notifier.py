@@ -25,7 +25,7 @@ class Notifications:
              cur = cdb.cursor()
 
         except sqlite.OperationalError as error:
-            print(error)
+
             with self.concert_database as cdb:
                 cur = cdb.cursor()
                 cur.execute('CREATE TABLE Upcoming (band TEXT,location TEXT,time TEXT,date DATE, days_to TEXT,days_to_int INTEGER)')
@@ -48,7 +48,7 @@ class Notifications:
                 result = cur.execute('SELECT band,date FROM Upcoming').fetchall()
             [upcoming_events[band].append(date) for band,date in result]
         except sqlite.OperationalError as error:
-            print(error)
+
             with self.concert_database as cdb:
                 cur = cdb.cursor()
                 cur.execute(

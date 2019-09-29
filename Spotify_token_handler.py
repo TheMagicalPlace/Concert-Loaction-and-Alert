@@ -90,19 +90,24 @@ def spotify_get_token(scope):
     if token == 'Invalid Scope':
         pass # this should never happen
     elif token == 'Token is Expired' or token =='Token Info not found':
-        res = requests.get('http://73.18.119.167:8085/spotify_auth_link.json')
-        print(res.json(),res.text)
-        webbrowser.open(res.json())
-        code = get_authentication_code()
-        token_info = requests.get('http://73.18.119.167:8085/access_token.json',params={'code':code})
-        tkinfo = token_info.json()
-        einfo = token_info.text
-        with open('.cache-user-token','w') as cache:
-            json.dump(tkinfo,cache)
-        return tkinfo['access_token']
+        res = requests.get('http://73.18.119.167:8085/spotify_auth_link.json',timeout=10)
+        try:
+
+            webbrowser.open(res.json())
+            code = get_authentication_code()
+            token_info = requests.get('http://73.18.119.167:8085/access_token.json',params={'code':code})
+            tkinfo = token_info.json()
+            einfo = token_info.text
+            with open('.cache-user-token','w') as cache:
+                json.dump(tkinfo,cache)
+                return tkinfo['access_token']
+        except requests.exceptions.ConnectionError as exc:
+            return exc
     else:
         print('Valid Token Found!')
         return token
+
+
 
 if __name__ == '__main__':
     spotify_get_token('playlist-read-private')

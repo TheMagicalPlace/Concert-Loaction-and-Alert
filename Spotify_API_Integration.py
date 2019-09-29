@@ -21,9 +21,11 @@ class SpotifyIntegration:
         self.uid = str(user_id)
         self.token = Spotify_token_handler.spotify_get_token(scope)
 
+
     def __call__(self):
         """the coroutine, with each yield used to return control to the GUI in order to get data for the next method"""
-
+        if isinstance(self.token,Exception):
+            return self.token
         self.sp = spotipy.Spotify(auth=self.token)
         #What does this do?
         self.sp.trace = False

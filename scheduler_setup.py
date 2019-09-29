@@ -3,7 +3,7 @@ from crontab import CronTab
 import json
 from os import getcwd
 from collections import abc
-
+import sys
 
 def initialize_scheduler():
     user_os = sys.platform
@@ -20,8 +20,8 @@ class SchedulerGeneric:
             self.update()
         except FileNotFoundError:
             self.init_on_startup = True
-            self.web_scraper_delay = 1800//60
-            self.gui_launch_delay = 3600//60
+            self.web_scraper_delay = 1800
+            self.gui_launch_delay = 3600
             self.user = None
         self.write_settings()
 
@@ -54,8 +54,8 @@ class SchedulerGeneric:
         self.write_settings()
 
     def activation_delay(self,web_scraper_delay=1800//60,gui_launch_delay=3600//60):
-        self.web_scraper_delay = web_scraper_delay
-        self.gui_launch_delay = gui_launch_delay
+        self.web_scraper_delay = web_scraper_delay*60
+        self.gui_launch_delay = gui_launch_delay*60
         self.write_settings()
 
 class SchedulerLinux(SchedulerGeneric):
@@ -77,9 +77,9 @@ class SchedulerLinux(SchedulerGeneric):
             if job.comment == 'concert_location_and_alert':
                 break
         else:
-            startup = cron.new(f'export DISPLAY=:0 && python3 {getcwd()}/startup_file.py',comment='concert_location_and_alert')
+            startup = cron.new(f'export DISPLAY=:0 && {sys.executable} {getcwd()}/startup_file.py',comment='concert_location_and_alert')
             startup.every_reboot()
-            startup.env['IS_RUN_BY_CRON'] = True
+            #startup.env['IS_RUN_BY_CRON'] = True
             cron.write()
         self.write_settings()
 

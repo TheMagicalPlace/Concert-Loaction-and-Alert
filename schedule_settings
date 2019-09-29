@@ -1,1 +1,1 @@
-{"user": "themagicalplace", "init_on_startup": true, "web_scraper_delay": 30, "gui_launch_delay": 60}
+{"user": "themagicalplace", "init_on_startup": true, "web_scraper_delay": 1800, "gui_launch_delay": 3600}

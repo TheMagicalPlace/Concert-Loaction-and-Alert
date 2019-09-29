@@ -135,7 +135,7 @@ class ConcertFinder:
         """sequentially iterates through each band in user_settings, with one band looked up
         per call"""
         bands = (band for band in self.bands)
-        print('test')
+
         while bands:
             band = next(bands)
             yield self.bands.index(band)

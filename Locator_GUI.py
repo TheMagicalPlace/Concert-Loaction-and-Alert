@@ -3,6 +3,7 @@ from time import sleep
 import Spotify_API_Integration as spot
 from ModifyUserSettings import LocatorSetup,LocatorMain
 from ConcertScraper import ConcertFinder as CFinder
+import  Spotify_token_handler
 from tkinter import *
 import sqlite3 as sqlite
 import json
@@ -14,6 +15,7 @@ from scheduler_setup import *
 from scheduler_setup import *
 from Notifier import *
 stop_all_threads = False
+from requests import exceptions as reqests_exceptions
 
 class TkinterEventSubprocess(threading.Thread):
     """class used to spawn threads in the Tkinter widgets (hopefully) without breaking anything"""
@@ -92,6 +94,7 @@ class FirstTimeStartup:
         self.user_data_setup = LocatorSetup() #
         self.user_data_setup = self.user_data_setup()
         self.queue = queue.Queue()
+        parent.protocol("WM_DELETE_WINDOW", self.exit_all)
         self()
 
     def __call__(self, *args, **kwargs):
@@ -124,7 +127,7 @@ class FirstTimeStartup:
         """Notes down user location and sends it to the LocatorSetup (from ModifyUserSettings.py"""
         def message2_button(event):
             val = location_input.get()
-            print(val)
+
             self.user_data_setup.send(val)
             frame2.destroy()
             self.spotify_int()
@@ -150,13 +153,13 @@ class FirstTimeStartup:
 
         """
         def spotint_yes_button(event):
-            print('yes registered')
+
             spotint.destroy()
             self.root.update()
             self.spotify_setup_user_input()
             pass
         def spotint_no_button(event):
-            print('no registered')
+
             spotint.destroy()
             self.manual_band_input()
             pass
@@ -234,7 +237,7 @@ class FirstTimeStartup:
     def spotify_select_artists(self,artists):
         """Select which artists are to be tracked"""
         def spot_selbands_continue_button(event,bands=artists):
-            print(bands, type(bands))
+
             tracked = [spot_selbands_choices.get(i) for i in spot_selbands_choices.curselection()]
             if tracked:
                 tracked_bands = [name for name in bands if name in tracked]
@@ -271,7 +274,7 @@ class FirstTimeStartup:
         """For manual entry of bands to track, YMMV. Also this is just a copy of message 2 in terms of code"""
         def message2_button(event):
             val = band_input.get()
-            print(val)
+
             self.user_data_setup.send('Not Given')
             self.user_data_setup.send(val)
             band_in_frame.destroy()
@@ -458,14 +461,20 @@ class FirstTimeStartup:
                               'you can hit exit, however if you selected to download the concert data that will continue in the backround').pack()
         b1 = Button(master=frm,text='Now',command=now_button)
         b2 = Button(master=frm, text='When Ready', command=later_button)
-        print(threading.active_count())
-        print(threading.activeCount(),[ thr.name for thr in threading.enumerate()])
+
         thread_ids = [ thr.name for thr in threading.enumerate()]
         if 'concert-lookup-thread' not in thread_ids:
             b2.configure(state= 'disabled')
 
         b3 = Button(master=frm,text='Exit',command=self.root.destroy)
         b1.pack(),b2.pack(),b3.pack()
+
+    def exit_all(self):
+        '''kills any seperate threads and exits the application'''
+        global stop_all_threads
+        stop_all_threads = True
+        self.root.destroy()
+        print([thread.name for thread in threading.enumerate()])
 
 class Main_GUI:
     """The main GUI window for the program, this class is only responsible for the appearance
@@ -488,6 +497,7 @@ class Main_GUI:
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
         self.banddb = {re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band]):band for band in self.bands}
         self.scheduler = initialize_scheduler() # creates an instance of the appropriate scheduler and returns it
+        parent.protocol("WM_DELETE_WINDOW", self.exit_all)
 
 
     def __call__(self):
@@ -499,6 +509,7 @@ class Main_GUI:
         spotmenu = Menu(menu)
         menu.add_cascade(label='Spotify Settings',menu=spotmenu)
         spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
+        spotmenu.add_command(label='Enable Spotify',command=self.enable_spotify)
 
         # Manual initiation of concert lookup
         self.concmenu = Menu(menu)
@@ -575,7 +586,6 @@ class Main_GUI:
                     try:
                         value = self.banddb[val]
                     except KeyError:
-                        print(val)
                         value = val
                 else: value = val
                 Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
@@ -597,10 +607,8 @@ class Main_GUI:
         """Tracks if the web scraper thread is still alive"""
         thread_ids = [thr.name for thr in threading.enumerate()]
         if 'concert-lookup-thread'  in thread_ids:
-            print('waiting')
             self.root.after(10000,self.queue_check)
         else:
-            print('done!')
             self.concmenu.entryconfig(1,state=ACTIVE)
 
     def add_artists(self):
@@ -609,7 +617,7 @@ class Main_GUI:
 
         def message2_button(event,parent):
             bands = band_input.get()
-            print(bands)
+
             self.UpdateSettings.add_bands(bands)
             self.update_GUI_variables()
             top.destroy()
@@ -803,8 +811,8 @@ class Main_GUI:
         if self.scheduler.init_on_startup:
 
             Label(master=main_frame,text=f'Launch on startup: Enabled').pack()
-            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay} Minutes after startup').pack()
-            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay} Minutes after startup').pack()
+            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay//60} Minutes after startup').pack()
         else:
             Label(master=main_frame,text='Launch on startup: Disabled').pack()
             Label(master=main_frame,
@@ -813,14 +821,6 @@ class Main_GUI:
                   text=f'GUI Window offset: Disabled').pack()
         Button(master=main_frame,text='Done',command=top.destroy).pack()
         main_frame.pack()
-
-    def exit_all(self):
-        '''kills any seperate threads and exits the application'''
-        global stop_all_threads
-        stop_all_threads = True
-        self.root.destroy()
-        sleep(5)
-        print([thread.name for thread in threading.enumerate()])
 
     def concert_time_to_update(self):
         """Updates the time range to display upcoming cocncerts in the GUI"""
@@ -845,15 +845,63 @@ class Main_GUI:
         message2.pack(),location_input.pack(), location_input_button.pack()
         location_frame.pack()
 
+    def enable_spotify(self):
+        """Gets the users spotify ID and attempts to validate credentials"""
+
+        top = Toplevel()
+        def spotint_send_button(event):
+            user_id = spot_usrsetup_field.get()
+            if user_id:
+                self.UpdateSettings.save_spotify_username(user_id)
+                spot_usrsetup.destroy()
+                try:
+                    Spotify_token_handler.spotify_get_token('playlist-read-private')  # playlist-read-private is the only scope needed, so this is hardcoded
+                except Exception as exe: # specific exceptions are handled elsewhere, this is set up mostly for debugging right now
+                    spot_usrsetup.destroy()
+                    error = f'{exe}'
+                    Label(master=top,text=error,wraplength=500).pack()
+                    top.update()
+                    time.sleep(5)
+                    top.destroy()
+                else:
+                    spot_usrsetup.destroy()
+                    SpotifyUpdate(top)
+            else:
+                top.destroy()
+
+        spot_usrsetup = Frame(top)
+        spot_usrsetup_dist = Label(spot_usrsetup,
+                                   text='Note: in order to impliment spotify integration your spotify ID '
+                                        'is required. In most cases this is not the same as your spotify '
+                                        'login information. In order to find your spotify ID go to '
+                                        'https://www.spotify.com/us/account/overview/ and click on the '
+                                        '\'Change Password\' tab and copy the device username to the field below. '
+                                        ''
+                                        'If you\'ve changed your mind, leave the field blank and hit enter to exit.',
+                                   wraplength=500)
+        spot_usrsetup_field = Entry(spot_usrsetup)
+        spot_usrsetup_button = Button(spot_usrsetup, text='Enter')
+        spot_usrsetup_button.bind('<Button-1>', spotint_send_button)
+        spot_usrsetup_dist.pack(), spot_usrsetup_button.pack(), spot_usrsetup_field.pack()
+        spot_usrsetup.pack()
+
+    def exit_all(self):
+        '''kills any seperate threads and exits the application'''
+        global stop_all_threads
+        stop_all_threads = True
+        self.root.destroy()
+        print([thread.name for thread in threading.enumerate()])
+
 class SpotifyUpdate:
     """GUI class for running through artist selection via spotify, this is essentially the same as the
     related methods found in the FirstTimeStartup class, but slightly modified to be able to run independently of
     the sequential order used in FirstTimeStartup"""
-    def __init__(self,parent,removed=None):
+    def __init__(self,parent,removed=None,user = None):
         self.root = parent
         with open('user_settings','r') as settings:
             data = json.load(settings)
             user_id = data['spotify_id']
+        if user is not None: user_id = user
         fr = Label(self.root,text='Updating Playlists - Please Wait')
         fr.pack()
         self.root.update()
@@ -912,6 +960,8 @@ class SpotifyUpdate:
         spot_selbands.pack()
         for band in artists:
             spot_selbands_choices.insert(END,band)
+
+
 
     uid = '1214002279'
 
