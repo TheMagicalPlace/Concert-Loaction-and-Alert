@@ -1,13 +1,10 @@
 from __future__ import print_function
 
 from http import server
-import socketserver
-from os import getcwd
 import os
 
 from spotipy import oauth2,SpotifyException
-import socket
-from http.server import BaseHTTPRequestHandler, HTTPServer
+
 from urllib.parse import urlparse, parse_qs
 
 

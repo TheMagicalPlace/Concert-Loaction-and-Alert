@@ -5,17 +5,20 @@ from ModifyUserSettings import LocatorSetup,LocatorMain
 from ConcertScraper import ConcertFinder as CFinder
 import  Spotify_token_handler
 from tkinter import *
-import sqlite3 as sqlite
-import json
-from copy import copy
 import threading
-import sys
 import queue
-from scheduler_setup import *
+from os import getcwd
+
+from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
 from Notifier import *
+import Spotify_API_Integration as spot
+from ModifyUserSettings import LocatorSetup,LocatorMain
+
 stop_all_threads = False
 from requests import exceptions as reqests_exceptions
+
+
 
 class TkinterEventSubprocess(threading.Thread):
     """class used to spawn threads in the Tkinter widgets (hopefully) without breaking anything"""
@@ -161,6 +164,7 @@ class FirstTimeStartup:
         def spotint_no_button(event):
 
             spotint.destroy()
+            self.user_data_setup.send(None)
             self.manual_band_input()
             pass
 
@@ -173,7 +177,7 @@ class FirstTimeStartup:
 
         spotint_yes.bind('<Button-1>',spotint_yes_button)
         spotint_no.bind('<Button-1>', spotint_no_button)
-        spotint_yes.grid(row=0, colunm=0), spotint_no.grid(row=0, colunm=1)
+        spotint_yes.grid(row=0, column=0), spotint_no.grid(row=0, column=1)
         spotint_text.pack(),
         bfrm.pack()
         spotint.pack()
@@ -295,6 +299,10 @@ class FirstTimeStartup:
         This spawns a seperate thread to run the web scraper"""
         def lookup_yes_action():
             lookup.destroy()
+            try:
+                next(self.user_data_setup)
+            except StopIteration:
+                pass
             self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
             self.add_to_startup()
 
@@ -345,7 +353,7 @@ class FirstTimeStartup:
                   wraplength=500).pack()
         else:
 
-            windows_text = '''Unless you know for certain that you will never want to have this program automatically
+            windows_text = f'''Unless you know for certain that you will never want to have this program automatically
                               run it is recommended that you follow these steps. With this method, toggling automatic 
                               execution can be easily modified though this program. If you do not wish to do this now or
                               have no intent of using this feature, click disable below, otherwise follow these instructions.
@@ -354,11 +362,13 @@ class FirstTimeStartup:
                               'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
                               From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
                               or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
-                              and hit Next again. You should see an imput box with 'Program/script:' above it. Copy the file path
+                              and hit Next again. You should see an input box with 'Program/script:' above it. Copy the file path
                               shown below into this box and hit next. To complete the setup hit Finish. 
                               
+                              File Path = {getcwd()+'/concert_tracker_startup.bat'}
+                              
                               Once you have done that, select how you would like to proceed.'''
-            Label(master=frm,text=windows_text,wraolength=500).pack()
+            Label(master=frm,text=windows_text,wraplength=500).pack()
         bfrm = Frame(master=frm)
         b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
         b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
@@ -388,7 +398,11 @@ class FirstTimeStartup:
                    'just hit Continue').pack()
         ent = Entry(master=cronfrm_default)
         ent.delete(0, END)
-        ent.insert(0, str(self.scheduler.user))
+
+        try:
+            ent.insert(0,str(self.scheduler.user))
+        except AttributeError:
+            pass
         ent.pack()
         Button(master=cronfrm_default, text='Continue', command=cont_button).pack()
         cronfrm_default.pack()
@@ -491,7 +505,6 @@ class Main_GUI:
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
         self.queue = queue.Queue()
-        self.concert_database = sqlite.connect('concert_db.db')
         self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
@@ -555,7 +568,7 @@ class Main_GUI:
 
     def update_GUI_variables(self):
         """updates the instance variables after user_settings is changed"""
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             for key,value in data.items():
                 if key == 'last_checked':
@@ -647,9 +660,6 @@ class Main_GUI:
             self.update_GUI_variables()
             top.destroy()
 
-
-
-
         band_in_frame = Frame(top)
         frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
         list_choices = Listbox(band_in_frame,selectmode=MULTIPLE)
@@ -733,7 +743,8 @@ class Main_GUI:
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
-                                   'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+                                   'before the window with the upcoming concerts is displayed'
+                                   '',wraplength=500).pack()
 
         else:
             Label(master=frm,text='The default settings are a 30 minute ' \
@@ -898,7 +909,7 @@ class SpotifyUpdate:
     the sequential order used in FirstTimeStartup"""
     def __init__(self,parent,removed=None,user = None):
         self.root = parent
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             user_id = data['spotify_id']
         if user is not None: user_id = user

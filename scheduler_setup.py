@@ -1,7 +1,9 @@
 import sys
-from crontab import CronTab
 import json
 from os import getcwd
+
+from crontab import CronTab
+
 from collections import abc
 import sys
 
@@ -9,7 +11,7 @@ def initialize_scheduler():
     user_os = sys.platform
     if user_os in ['linux','darwin']:
         return SchedulerLinux()
-    elif user_os is 'win32':
+    elif user_os is 'Win32':
         return SchedulerWindows()
     else:
         return 'Unsupported Operating System'
@@ -27,7 +29,7 @@ class SchedulerGeneric:
 
     def update(self):
         """updates the instance variables for use in the GUI"""
-        with open('schedule_settings', 'r') as schedule:
+        with open('userdata\\schedule_settings', 'r') as schedule:
             data = json.load(schedule)
             for key, value in data.items():
                 if key == 'user':
@@ -36,7 +38,7 @@ class SchedulerGeneric:
                     exec(f'self.{key} = {str(value)}')
 
     def write_settings(self):
-        with open('schedule_settings', 'w') as schedule:
+        with open('userdata\\schedule_settings', 'w') as schedule:
             sch = {'user':self.user,
                    'init_on_startup': self.init_on_startup,
                    'web_scraper_delay': self.web_scraper_delay,
@@ -79,7 +81,7 @@ class SchedulerLinux(SchedulerGeneric):
         else:
             startup = cron.new(f'export DISPLAY=:0 && {sys.executable} {getcwd()}/startup_file.py',comment='concert_location_and_alert')
             startup.every_reboot()
-            #startup.env['IS_RUN_BY_CRON'] = True
+            startup.env['STARTUP'] = 'yes'
             cron.write()
         self.write_settings()
 
@@ -88,16 +90,16 @@ class SchedulerLinux(SchedulerGeneric):
 class SchedulerWindows(SchedulerGeneric):
     def __init__(self):
         super().__init__()
-        self.path_to_interp =sys.executable+'/python.exe'
-        self.current_directory = getcwd()+'/startup_file.py'
+        self.path_to_interp ='"'+sys.executable+'"'
+        self.current_directory = '"'+getcwd()+'\main.py'+'"'
 
     def create_startup_file(self):
         print('\n',self.path_to_interp,'\n',self.current_directory)
-        with open('Startup_Init.bat','w') as startup:
-            startup.write(self.path_to_interp+' ')
-            startup.write(self.current_directory)
-            startup.write('\npause')
-        startup_file = getcwd()+'/Startup_Init.bat'
+        with open('userdata\\concert_tracker_startup.bat','w') as startup:
+            startup.write('echo off\nsetlocal\nset STARTUP=yes\nstart ')
+            startup.write(self.path_to_interp)
+            startup.write('\nendlocal')
+        startup_file = getcwd()+'\\userdata\\concert_tracker_startup.bat'
         return startup_file
 
     def enabledisable(self,enabled):
@@ -112,3 +114,4 @@ class SchedulerWindows(SchedulerGeneric):
 
 if __name__ == '__main__':
     sch = SchedulerWindows()
+    sch.create_startup_file()

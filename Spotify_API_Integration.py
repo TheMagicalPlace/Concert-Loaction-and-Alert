@@ -1,11 +1,16 @@
 
 from spotipy.oauth2 import SpotifyClientCredentials
-import spotipy,spotipy.util as util
+
 import time
 import json
-from collections import  defaultdict
+from collections import defaultdict
 import logging
+
+import spotipy
+
 import Spotify_token_handler
+
+
 class SpotifyIntegration:
     """Despite the name, this class contains functions both for the aquisition of the artists a user wished to track
     using the Spotify API, as well as extracting and storing the important bits in the database used across this app"""
@@ -70,7 +75,7 @@ class SpotifyIntegration:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    with open('user_settings','r') as settings:
+    with open('userdata\\user_settings','r') as settings:
         data = json.load(settings)
         user_id = data['spotify_id']
 

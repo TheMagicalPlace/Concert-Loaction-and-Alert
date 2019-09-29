@@ -12,11 +12,12 @@ from urllib.parse import urlparse, parse_qs
 
 import requests
 import spotipy
+
 REDIRECT_URI = 'http://localhost:8080/index.html'
 PORT = 8080
 
 class SpotifyTokenCheck:
-    cache_path = '.cache-user-token'
+    cache_path = 'userdata\\.cache-user-token'
     def __init__(self):
         self.token_info = None
 
@@ -98,7 +99,7 @@ def spotify_get_token(scope):
             token_info = requests.get('http://73.18.119.167:8085/access_token.json',params={'code':code})
             tkinfo = token_info.json()
             einfo = token_info.text
-            with open('.cache-user-token','w') as cache:
+            with open('userdata\\.cache-user-token','w') as cache:
                 json.dump(tkinfo,cache)
                 return tkinfo['access_token']
         except requests.exceptions.ConnectionError as exc:

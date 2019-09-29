@@ -12,14 +12,14 @@ class Notifications:
         """most of this is just defining the conversion dictionaries for the band in order to (try to) sanatize the
         database input. """
         current_date = dt_date.today().isoformat()
-        with open('user_settings','r') as settings:
+        with open('userdata\\user_settings','r') as settings:
             data = json.load(settings)
             self.bands = data['bands']
             self.concert_notification_time_to_display = data['concert_notification_time_to_display']
             self.banddb = {band: str("_".join(band.split(' '))) for band in self.bands}
             for band in self.banddb:
                 self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
-        self.concert_database = sqlite.connect('concert_db.db')
+        self.concert_database = sqlite.connect('userdata\\concert_db.db')
         try:
             with self.concert_database as cdb:
              cur = cdb.cursor()
