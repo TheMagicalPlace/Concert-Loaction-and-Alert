@@ -1,8 +1,5 @@
 
 from time import sleep
-import Spotify_API_Integration as spot
-from ModifyUserSettings import LocatorSetup,LocatorMain
-from ConcertScraper import ConcertFinder as CFinder
 import  Spotify_token_handler
 from tkinter import *
 import threading
@@ -12,12 +9,10 @@ from os import getcwd
 from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
 from Notifier import *
-import Spotify_API_Integration as spot
+import WindowsFiles.Spotify_API_Integration as spot
 from ModifyUserSettings import LocatorSetup,LocatorMain
 
 stop_all_threads = False
-from requests import exceptions as reqests_exceptions
-
 
 
 class TkinterEventSubprocess(threading.Thread):
