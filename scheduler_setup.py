@@ -78,9 +78,11 @@ class SchedulerLinux(SchedulerGeneric):
         cron = CronTab(user=user)
         for job in cron:
             if job.comment == 'concert_location_and_alert':
-                break
+                # the original cron is deleted in case the user moved the application files somewhere else and launched
+                # the program manually
+                cron.remove_all(comment='concert_location_and_alert')
         else:
-            startup = cron.new(f'export DISPLAY=:0 && {sys.executable} {getcwd()}/startup_file.py',comment='concert_location_and_alert')
+            startup = cron.new(f'sleep 30 && export DISPLAY=:0 && cd {os.getcwd()} && {sys.executable} {os.path.join(getcwd(),"main.py")} >> a.txt',comment='concert_location_and_alert')
             startup.every_reboot()
             startup.env['STARTUP'] = 'yes'
             cron.write()

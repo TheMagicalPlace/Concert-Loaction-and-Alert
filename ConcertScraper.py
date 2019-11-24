@@ -55,8 +55,9 @@ class ConcertFinder:
             self.concert_database = sqlite.connect(os.path.join('userdata','concert_db.db'))
 
     def _website_search_songkick(self,band,concert_dates=None):
+        print(band)
         """Searches out concerts from songkick based on the bands in user_settings"""
-        for page in range(1,5):
+        for page in range(1,3):
 
             params = {'page':page,'per_page':15,'query':self.bandwb[band],'type':'upcoming'}
             try:

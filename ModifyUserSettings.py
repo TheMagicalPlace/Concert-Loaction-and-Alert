@@ -110,11 +110,6 @@ class LocatorMain(LocatorSetup):
     def __call__(self):
         pass # Not Callable
 
-    def delete_bands(self):
-        '''Deletes band tracking for bands selected by the user'''
-        self.bands = yield self.bands
-        self.save_data()
-
     def update_user_location(self,location):
         '''Changes user location'''
         # TODO - currently setting it like this wont update location for already tracked concerts, either
