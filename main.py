@@ -11,7 +11,7 @@ from Notifier import Notifications
 def activation_delay():
     '''This method is used to automatically update the upcoming concerts & is run on a delayed timer to
     run ~ 30 minutes after startup (or if the application is open for >24 hours, once every 24 hours'''
-    with open(os.path.join('userdata','user_settings'),'r') as settings:
+    with open(os.path.join(os.getcwd(),'userdata','user_settings'),'r') as settings:
         last_checked = json.load(settings)['last_checked']
     if last_checked != datetime.date.today().isoformat():
         concert_finder = CFinder()
@@ -22,16 +22,16 @@ def activation_delay():
         print('Already Checked Today!')
 
 def autostartup():
+    print(os.getcwd())
     """on windows the bat file will always run, but if launch on startup is disabled the program
     shuts itself down almost immediately. This seemed a reasonable compromise between having it
      always run and having to change the bat file every time"""
     # really, this should never except unless
     # the user has deleted their files from the first time startup for some reason
     try:
-        with open(os.path.join('userdata','schedule_settings'), 'r') as usr:
+        with open(os.path.join(os.getcwd(),'userdata','schedule_settings'), 'r') as usr:
             data = json.load(usr)
-            print(data['last_checked'])
-        with open(os.path.join('userdata','schedule_settings'), 'r') as schedule:
+        with open(os.path.join(os.getcwd(),'userdata','schedule_settings'), 'r') as schedule:
             sch = json.load(schedule)
             if sch['init_on_startup']:
                 web_scraper_delay = int(sch['web_scraper_delay'])*60
@@ -50,7 +50,7 @@ def autostartup():
         if sch['init_on_startup']:
             notification_update = Notifications()
             notification_update.check_dates()
-            concert_db_update = threading.Timer(web_scraper_delay if not None else 1, activation_delay)
+            concert_db_update = threading.Timer(web_scraper_delay, activation_delay)
             concert_db_update.start()
             time.sleep(gui_launch_delay)
             root = Tk()
@@ -79,7 +79,7 @@ if __name__ =='__main__':
 
     if not os.path.exists(os.path.join(os.getcwd(),'userdata')):
         os.makedirs('userdata')
-
+    print(os.path.join(os.getcwd(),'userdata','schedule_settings'))
 
     """if the program is started through the created bat file (on windows) or by a cron job (on unix systems) 
     the autostartup is run based on user settings, otherwise the program assumes that the user is starting

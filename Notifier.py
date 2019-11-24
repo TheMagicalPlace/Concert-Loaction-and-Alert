@@ -81,6 +81,9 @@ class Notifications:
                     current = time.strptime(dt_date.today().isoformat(),'%Y-%m-%d')
                     time_to = time.mktime(date)-time.mktime(current)
                     time_to_repr = str(timedelta(seconds=time_to))[:-9]
+                    if not time_to_repr:
+                        time_to_repr = 'Today'
+
                     if time_to < 60*60*24*7*int(round(float(self.concert_notification_time_to_display))): # set in InitialSetup.LocatorMain, default 2 weeks
 
                         # This updates the 'time_to' colunm in the database if an entry for the current band and date exist,
@@ -104,6 +107,10 @@ class Notifications:
         return up,framedimensions
 
 if __name__ == '__main__':
+    e = str(timedelta(seconds=60*60*12))[:2]+' hours'
+    print(bool(e) == True)
+    if e:
+        print(e)
     test = Notifications()
     test.concert_notification_time_to_display = 1
     test.check_dates()

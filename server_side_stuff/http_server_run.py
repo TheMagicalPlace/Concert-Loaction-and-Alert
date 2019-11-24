@@ -1,13 +1,8 @@
 from __future__ import print_function
-
 from http import server
 import os
-
 from spotipy import oauth2,SpotifyException
-
 from urllib.parse import urlparse, parse_qs
-
-
 import json
 
 class CLAHandler(server.SimpleHTTPRequestHandler):
@@ -23,7 +18,6 @@ class CLAHandler(server.SimpleHTTPRequestHandler):
         access_token = None
         print(query,self.path)
         if self.path.endswith('spotify_auth_link.json'):
-
             self.json_get(sp_oauth.get_authorize_url())
         elif link.endswith('access_token.json'):
             query_components = dict(qc.split("=") for qc in query.split("&"))
@@ -73,8 +67,8 @@ if __name__ == '__main__':
     redirect_uri = "http://10.0.0.187:8085/index.html"
     redirect_uri = 'http://localhost:8080/index.html'
     client_id = os.getenv('SPOTIPY_CLIENT_ID') or 'ce4091c720c04087ad60ed054ffd9760'
-    client_secret = os.getenv('SPOTIPY_CLIENT_SECRET') or 'c1710a69f80c405d9ecad0eb1c6f548d'
+    client_secret = os.getenv('SPOTIPY_CLIENT_SECRET') or '4ac49e76a8124af591e71f1afe2af644'
     sp_oauth = oauth2.SpotifyOAuth(client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri,
-                                   scope='playlist-read-private', cache_path=".cache-user-token")
+                                   scope='playlist-read-private', cache_path=os.path.join('userdata',".cache-user-token"))
     run()
 
