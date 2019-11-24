@@ -34,8 +34,8 @@ def autostartup():
         with open(os.path.join(os.getcwd(),'userdata','schedule_settings'), 'r') as schedule:
             sch = json.load(schedule)
             if sch['init_on_startup']:
-                web_scraper_delay = int(sch['web_scraper_delay'])*60
-                gui_launch_delay = int(sch['gui_launch_delay'])*60
+                web_scraper_delay = int(sch['web_scraper_delay'])
+                gui_launch_delay = int(sch['gui_launch_delay'])
             else:
                 web_scraper_delay, gui_launch_delay = None, None
     except FileNotFoundError:
