@@ -1,19 +1,19 @@
 
 from time import sleep
-import Spotify_API_Integration as spot
-from ModifyUserSettings import LocatorSetup,LocatorMain
-from ConcertScraper import ConcertFinder as CFinder
+import  Spotify_token_handler
 from tkinter import *
-import sqlite3 as sqlite
-import json
-from copy import copy
 import threading
-import sys
 import queue
-from scheduler_setup import *
+from os import getcwd
+
+from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
 from Notifier import *
+import WindowsFiles.Spotify_API_Integration as spot
+from ModifyUserSettings import LocatorSetup,LocatorMain
+
 stop_all_threads = False
+
 
 class TkinterEventSubprocess(threading.Thread):
     """class used to spawn threads in the Tkinter widgets (hopefully) without breaking anything"""
@@ -92,8 +92,8 @@ class FirstTimeStartup:
         self.user_data_setup = LocatorSetup() #
         self.user_data_setup = self.user_data_setup()
         self.queue = queue.Queue()
+        parent.protocol("WM_DELETE_WINDOW", self.exit_all)
         self()
-
 
     def __call__(self, *args, **kwargs):
         """Attempts to prime the user_data_setup coroutine, if it returns a StopIteration user data is already present
@@ -109,7 +109,7 @@ class FirstTimeStartup:
             self.root.mainloop()
 
     def message1(self):
-        """This does nothing other than note that the gui has been started"""
+        """This does nothing other than note that the program has been started"""
         def message1_terminate(event):
             self.root.update()
             sleep(1)
@@ -122,21 +122,19 @@ class FirstTimeStartup:
         frame1.pack()
 
     def message2(self):
-        """Records user location and sends it to the LocatorSetup (from ModifyUserSettings.py)"""
+        """Notes down user location and sends it to the LocatorSetup (from ModifyUserSettings.py"""
         def message2_button(event):
             val = location_input.get()
-            print(val)
+
             self.user_data_setup.send(val)
             frame2.destroy()
             self.spotify_int()
             return val
 
         frame2 = Frame(self.root)
-        message2text = ' In order to only keep track of nearby concerts, your location is required. Please input' \
-                       'the location you would like to track from as City,State. Currently, this' \
-                       'won\t work outside of the United States, so for users outside of the' \
-                       'United States concerts will still be tracked, however you will be unable to filter upcoming concerts' \
-                       'by location.'
+        message2text = ' In order to only keep track of nearby concerts, your location is requred. Please input ' \
+                       'the location you would like to track from in the form City,State. Note that this application is ' \
+                       'currently limited to only United States residents'
         message2 = Label(frame2, text=message2text,wraplength=500)
         location_input = Entry(frame2)
         location_input_button = Button(frame2)
@@ -149,29 +147,34 @@ class FirstTimeStartup:
 
     def spotify_int(self):
         """
-        Allows the user to select enable Spotify integration or only manually input bands
+        Allows the user to select enable spotify integration or only manually input bands
 
         """
         def spotint_yes_button(event):
-            print('yes registered')
+
             spotint.destroy()
             self.root.update()
             self.spotify_setup_user_input()
             pass
         def spotint_no_button(event):
-            print('no registered')
+
             spotint.destroy()
+            self.user_data_setup.send(None)
             self.manual_band_input()
             pass
 
         spotint = Frame(self.root)
-        spotint_text = Label(spotint,text='Would you like to get artists to track via spotify? If not'
-                                          'you can add them manually, or enable it later.',wraplength=500)
-        spotint_yes = Button(spotint,text='Yes')
-        spotint_no = Button(spotint,text='No')
+        spotint_text = Label(spotint,text='Would you like to use one (or more) of your spotify playlists in order to '
+                                          'determine what bands to track?',wraplength=500)
+        bfrm = Frame(master=spotint)
+        spotint_yes = Button(bfrm,text='Yes')
+        spotint_no = Button(bfrm,text='No')
+
         spotint_yes.bind('<Button-1>',spotint_yes_button)
         spotint_no.bind('<Button-1>', spotint_no_button)
-        spotint_text.pack(),spotint_yes.pack(),spotint_no.pack()
+        spotint_yes.grid(row=0, column=0), spotint_no.grid(row=0, column=1)
+        spotint_text.pack(),
+        bfrm.pack()
         spotint.pack()
 
     def spotify_setup_user_input(self):
@@ -179,13 +182,12 @@ class FirstTimeStartup:
         def spotint_send_button(event):
 
             user_id = spot_usrsetup_field.get()
-            user_id = '1214002279'
             self.user_data_setup.send(user_id)
             spot_usrsetup.destroy()
             f = Label(master=self.root,text='Getting Playlist Data - Please Wait')
             f.pack()
             self.root.update()
-            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id)
+            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id) # playlist-read-private is the only scope needed, so this is hardcoded
             self.spotifyapp = self.spotifyapp()
             playlists = next(self.spotifyapp)
             f.destroy()
@@ -193,7 +195,7 @@ class FirstTimeStartup:
 
 
         spot_usrsetup = Frame(self.root)
-        spot_usrsetup_dist = Label(spot_usrsetup,text = 'Note: In order to impliment spotify integration your spotify ID '
+        spot_usrsetup_dist = Label(spot_usrsetup,text = 'Note: in order to impliment spotify integration your spotify ID '
                                                         'is required. In most cases this is not the same as your spotify '
                                                         'login information. In order to find your spotify ID go to '
                                                         'https://www.spotify.com/us/account/overview/ and click on the '
@@ -234,7 +236,7 @@ class FirstTimeStartup:
     def spotify_select_artists(self,artists):
         """Select which artists are to be tracked"""
         def spot_selbands_continue_button(event,bands=artists):
-            print(bands, type(bands))
+
             tracked = [spot_selbands_choices.get(i) for i in spot_selbands_choices.curselection()]
             if tracked:
                 tracked_bands = [name for name in bands if name in tracked]
@@ -256,9 +258,7 @@ class FirstTimeStartup:
 
         spot_selbands = Frame(self.root)
         spot_selbands_desc = Label(spot_selbands,text='Select which bands you would like to follow or just press Done '
-                                                      'to track all listed bands. If you have a large number of bands'
-                                                      'in your playlists, it may be easier just hit Done and remove'
-                                                      'the ones you don\'t want to track later')
+                                                      'to track all listed bands')
         spot_selbands_choices = Listbox(spot_selbands,selectmode=MULTIPLE)
         spot_selbands_button = Button(spot_selbands,text='Done')
         spot_selbands_button.bind('<Button-1>',spot_selbands_continue_button)
@@ -273,13 +273,14 @@ class FirstTimeStartup:
         """For manual entry of bands to track, YMMV. Also this is just a copy of message 2 in terms of code"""
         def message2_button(event):
             val = band_input.get()
+
             self.user_data_setup.send('Not Given')
             self.user_data_setup.send(val)
             band_in_frame.destroy()
             self.concert_lookup()
 
         band_in_frame = Frame(self.root)
-        man_imput_2text = 'Input each band you would like to track, separated by commas'
+        man_imput_2text = 'Input each band you would like to track, seperated by commas'
         message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
         band_input = Entry(band_in_frame)
         band_input_button = Button(band_in_frame)
@@ -290,9 +291,13 @@ class FirstTimeStartup:
 
     def concert_lookup(self):
         """Allows the user to optionally do the concert lookup while the rest of the setup is run.
-        This spawns a separate thread to run the web scraper"""
+        This spawns a seperate thread to run the web scraper"""
         def lookup_yes_action():
             lookup.destroy()
+            try:
+                next(self.user_data_setup)
+            except StopIteration:
+                pass
             self.search_thread =TkinterEventSubprocess(self.queue,CFinder,'concert-lookup-thread').start()
             self.add_to_startup()
 
@@ -301,9 +306,9 @@ class FirstTimeStartup:
             self.add_to_startup()
 
         lookup = Frame(self.root)
-        lookup_text = Label(lookup,text='Would you like to find concert dates now? This requires '
+        lookup_text = Label(lookup,text='Would you like to find concert dates now? Note that this obviously required'
                                         'an internet connection, and may take a while in cases where a large'
-                                        'number of bands are tracked. If not you can always do this later.')
+                                        'number of bands are tracked')
         lookup_button_yes=Button(lookup,text='Yes',command=lookup_yes_action)
         lookup_button_no = Button(lookup,text='No',command=lookup_no_action)
         lookup_text.pack(),lookup_button_yes.pack(),lookup_button_no.pack()
@@ -312,82 +317,126 @@ class FirstTimeStartup:
     #The following three methods are involved in setup and customization of startup settings
 
     def add_to_startup(self):
-        """Allows the user to add the program to startup, on Mac and Linux systems this can be done
-        via scheduler_setup.py, but must be done by the user on Windows OS"""
+        """Used for modification of the startup settings"""
+        top = self.root # this code is mostly taken from main GUI
+        self.scheduler = initialize_scheduler()
+
         def default_button():
             frm.destroy()
-            self.add_to_startup_default()
+            self.add_to_startup_default(top)
 
         def custom_button():
             frm.destroy()
-            self.add_to_startup_custom()
+            self.add_to_startup_custom(top)
 
         def disable_button():
             frm.destroy()
-            schdl = SchedulerLinux()
-            schdl.cron_enable(False)
+            self.scheduler.enabledisable(False)
             self.launch_main()
 
         frm = Frame(self.root)
 
         user_os = sys.platform
-        if user_os == 'linux':
-            Label(master=frm,text='This application is designed to make use of the cron scheduler to '
-                                  'automatically perform most of it\'s functions. While you *should* have'
-                                  'no issues with just manually updating as you go, for sake of ease I would recommend '
-                                  'enabling it and setting the delay as desired. The default settings are a 30 minute'
-                                  'delay from startup before concert data is updated from the web, and a one hour delay'
-                                  'before the window with the upcoming concerts is displayed' ,wraplength=500).pack()
-            b1 = Button(master=frm,text='Use Default Settings',command=default_button)
-            b2 = Button(master=frm,text='Custom Settings',command=custom_button)
-            b3 = Button(master=frm,text='Disable Automatic Startup',command=disable_button)
-            b1.pack(),b2.pack(),b3.pack()
-            frm.pack()
-        else: self.add_to_startup()
 
-    def add_to_startup_default(self):
+        if user_os != 'win32':
+            Label(master=frm, text='This application is designed to make use of the cron scheduler to '
+                                   'automatically perform most of it\'s functions. While you *should* have'
+                                   'no issues with just manually updating as you go, for sake of ease I would recommend '
+                                   'enabling it and setting the delay as desired. The default settings are a 30 minute'
+                                   'delay from startup before concert data is updated from the web, and a one hour delay'
+                                   'before the window with the upcoming concerts is displayed',
+                  wraplength=500).pack()
+        else:
+
+            windows_text = f'''Unless you know for certain that you will never want to have this program automatically
+                              run it is recommended that you follow these steps. With this method, toggling automatic 
+                              execution can be easily modified though this program. If you do not wish to do this now or
+                              have no intent of using this feature, click disable below, otherwise follow these instructions.
+
+                              In the start menu search for \'Task Scheduler\' and click it. In the 'Actions' panel select
+                              'Create Basic Task...'. From there, name it anything you would like and click Next in the window.
+                              From there you can configure the task settings, I recommend setting it to either 'When the computer starts'
+                              or 'When I log on' as further time delay can be configured later. From there hit Next, select 'Start a Program'
+                              and hit Next again. You should see an input box with 'Program/script:' above it. Copy the file path
+                              shown below into this box and hit next. To complete the setup hit Finish. 
+                              
+                              File Path = {getcwd()+'/concert_tracker_startup.bat'}
+                              
+                              Once you have done that, select how you would like to proceed.'''
+            Label(master=frm,text=windows_text,wraplength=500).pack()
+        bfrm = Frame(master=frm)
+        b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
+        b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
+        b3 = Button(master=bfrm, text='Disable Automatic Startup', command=disable_button)
+        b1.grid(row=0, column=0), b2.grid(row=0, column=1), b3.grid(row=0, column=2)
+        bfrm.pack()
+        frm.pack()
+
+
+    def add_to_startup_default(self, parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
         an hour after startup for the main GUI to launch"""
+
         def cont_button():
             usr = ent.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr)
+            self.scheduler.enabledisable(True)
+            self.scheduler.activation_delay()
+            if sys.platform != 'win32':
+                self.scheduler.cron_setup(usr)
             cronfrm_default.destroy()
             self.launch_main()
 
-        cronfrm_default = Frame(self.root)
+        cronfrm_default = Frame(parent)
 
-        Label(master=cronfrm_default,text='Enter your linux username, i.e. usr in home/usr').pack()
-        ent = Entry(master=cronfrm_default,)
+        Label(master=parent,
+              text='If you are on linux or macOS, enter your linux username, i.e. usr in home/usr, otherwise'
+                   'just hit Continue').pack()
+        ent = Entry(master=cronfrm_default)
+        ent.delete(0, END)
+
+        try:
+            ent.insert(0,str(self.scheduler.user))
+        except AttributeError:
+            pass
         ent.pack()
-        Button(master=cronfrm_default,text='Continue',command=cont_button).pack()
+        Button(master=cronfrm_default, text='Continue', command=cont_button).pack()
         cronfrm_default.pack()
 
-    def add_to_startup_custom(self):
+    def add_to_startup_custom(self, parent=None):
         """Creates a cron job with user specified delays for the web scraper and GUI"""
+
         def cont_button_custom():
+            self.scheduler.cron_enable(True)
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr,int(scraper_delay),int(gui_delay))
+            if sys.platform != 'win32':
+                self.scheduler.cron_setup(usr)
             cronfrm_custom.destroy()
+            self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             self.launch_main()
 
-        cronfrm_custom = Frame(self.root)
+        cronfrm_custom = Frame(parent)
         cronfrm_custom.pack()
-        Label(master=cronfrm_custom,text='Enter your linux username, i.e. usr in home/usr').pack()
-        entusr =Entry(master=cronfrm_custom)
+        Label(master=cronfrm_custom, text='''If you are on linux or macOS, enter your linux username, i.e. usr 
+        in home/usr, otherwise leave this blank.''').pack()
+        entusr = Entry(master=cronfrm_custom)
+        entusr.delete(0, END)
+        entusr.insert(0, self.scheduler.user)
         entusr.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
-                                                      'before the application updates concert data from the internet').pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
+                                          'before the application updates concert data from the internet').pack()
         entdelay1 = Entry(master=cronfrm_custom)
+        entdelay1.delete(0, END)
+        entdelay1.insert(0, str(self.scheduler.web_scraper_delay))
         entdelay1.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
-                                                      'before the window containing upcoming concert data is opened').pack()
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
+                                          'before the window containing upcoming concert data is opened').pack()
         entdelay2 = Entry(master=cronfrm_custom)
+        entdelay2.delete(0, END)
+        entdelay2.insert(0, str(self.scheduler.gui_launch_delay))
         entdelay2.pack()
-        Button(master=cronfrm_custom,text='Submit',command=cont_button_custom).pack()
+        Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
 
     # Launches the main GUI
 
@@ -400,7 +449,7 @@ class FirstTimeStartup:
             main_gui = Main_GUI(master)
             main_gui()
         def later_button():
-
+            self.root.destroy()
             def process_queue():
                 try:
                     self.queue.get()
@@ -413,7 +462,7 @@ class FirstTimeStartup:
                     main_gui = Main_GUI(master)
                     main_gui()
             process_queue()
-            self.root.withdraw()
+
 
         frm = Frame(master=self.root)
         frm.pack()
@@ -421,14 +470,20 @@ class FirstTimeStartup:
                               'you can hit exit, however if you selected to download the concert data that will continue in the backround').pack()
         b1 = Button(master=frm,text='Now',command=now_button)
         b2 = Button(master=frm, text='When Ready', command=later_button)
-        print(threading.active_count())
-        print(threading.activeCount(),[ thr.name for thr in threading.enumerate()])
+
         thread_ids = [ thr.name for thr in threading.enumerate()]
         if 'concert-lookup-thread' not in thread_ids:
             b2.configure(state= 'disabled')
 
         b3 = Button(master=frm,text='Exit',command=self.root.destroy)
         b1.pack(),b2.pack(),b3.pack()
+
+    def exit_all(self):
+        '''kills any seperate threads and exits the application'''
+        global stop_all_threads
+        stop_all_threads = True
+        self.root.destroy()
+        print([thread.name for thread in threading.enumerate()])
 
 class Main_GUI:
     """The main GUI window for the program, this class is only responsible for the appearance
@@ -445,12 +500,12 @@ class Main_GUI:
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
         self.queue = queue.Queue()
-        self.concert_database = sqlite.connect('concert_db.db')
         self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
         self.banddb = {band:str("_".join(band.split(' '))) for band in self.bands}
         self.banddb = {re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band]):band for band in self.bands}
         self.scheduler = initialize_scheduler() # creates an instance of the appropriate scheduler and returns it
+        parent.protocol("WM_DELETE_WINDOW", self.exit_all)
 
 
     def __call__(self):
@@ -462,7 +517,7 @@ class Main_GUI:
         spotmenu = Menu(menu)
         menu.add_cascade(label='Spotify Settings',menu=spotmenu)
         spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
-        spotmenu.add_command(label='Enable/Disable Spotify Tracking',command=self.spotify_toggle)
+        spotmenu.add_command(label='Enable Spotify',command=self.enable_spotify)
 
         # Manual initiation of concert lookup
         self.concmenu = Menu(menu)
@@ -506,10 +561,9 @@ class Main_GUI:
 
 
 
-
     def update_GUI_variables(self):
         """updates the instance variables after user_settings is changed"""
-        with open('user_settings','r') as settings:
+        with open(os.path.join('userdata','user_settings'),'r') as settings:
             data = json.load(settings)
             for key,value in data.items():
                 if key == 'last_checked':
@@ -519,42 +573,36 @@ class Main_GUI:
 
     def displaybar(self,parent,iter_data,framedimensions):
         """This is used to display & format the concert data in a (sort of) aesthetic format"""
+
+        dbframe = Frame(master=parent)
+        dbframe.pack()
+        scrollbar = Scrollbar(dbframe)
+        innerholder = Canvas(master=dbframe,height=600,width=970,yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side=RIGHT, fill=Y)
+        n = Frame(master=innerholder)
+
+
+        innerholder.pack(side='left')
+        innerholder.create_window(0, 0, window=n,anchor=NW)
         for row in iter_data:
             r = iter_data.index(row)
-            if r == 0: Label(parent,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
+            if r == 0: Label(n,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
             else: r+=1
             for val in row:
                 if row.index(val) == 0:
                     try:
                         value = self.banddb[val]
                     except KeyError:
-                        print(val)
                         value = val
                 else: value = val
-                Label(parent,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+                Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+        scrollbar.config(command=innerholder.yview)
 
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
         top = Toplevel()
         SpotifyUpdate(top, self.UpdateSettings.removed_bands)
-
-    def spotify_toggle(self):
-        top = Toplevel()
-        window = Frame(master=top)
-        window.pack()
-
-        def button_event():
-            self.UpdateSettings.remove_spotify_tracking()
-            top.destroy()
-
-        if self.UpdateSettings.spotify_id:
-            Label(master=window, text='Would you like to disable spotify integration? You can always re-enable it later').pack()
-            Button(master=window, text='Yes', command=button_event).pack()
-            Button(master=window, text='No', command=top.destroy).pack()
-        else:
-            top.destroy()
-            pass
-        # TODO finish this
 
     def concert_update(self):
         """Initializes and calls an instance of ConcertFinder (shortened to CFinder here) from ConcertScraper.py"""
@@ -567,10 +615,8 @@ class Main_GUI:
         """Tracks if the web scraper thread is still alive"""
         thread_ids = [thr.name for thr in threading.enumerate()]
         if 'concert-lookup-thread'  in thread_ids:
-            print('waiting')
             self.root.after(10000,self.queue_check)
         else:
-            print('done!')
             self.concmenu.entryconfig(1,state=ACTIVE)
 
     def add_artists(self):
@@ -579,7 +625,7 @@ class Main_GUI:
 
         def message2_button(event,parent):
             bands = band_input.get()
-            print(bands)
+
             self.UpdateSettings.add_bands(bands)
             self.update_GUI_variables()
             top.destroy()
@@ -608,9 +654,6 @@ class Main_GUI:
             band_in_frame.destroy()
             self.update_GUI_variables()
             top.destroy()
-
-
-
 
         band_in_frame = Frame(top)
         frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
@@ -670,9 +713,7 @@ class Main_GUI:
     def add_to_startup(self):
         """Used for modification of the startup settings"""
         top = Toplevel()
-        if self.scheduler.system != 'linux/mac':
-            top.destroy()
-            return
+        self.scheduler = initialize_scheduler()
 
         def default_button():
             frm.destroy()
@@ -684,37 +725,50 @@ class Main_GUI:
 
         def disable_button():
             frm.destroy()
-            self.scheduler.cron_enable(False)
+            self.scheduler.enabledisable(False)
             top.destroy()
+
 
         frm = Frame(top)
 
         user_os = sys.platform
-        if user_os == 'linux':
+        if user_os != 'win32':
             Label(master=frm, text='This application is designed to make use of the cron scheduler to '
                                    'automatically perform most of it\'s functions. While you *should* have'
                                    'no issues with just manually updating as you go, for sake of ease I would reccomend '
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
-                                   'before the window with the upcoming concerts is displayed',wraplength=500).pack()
-            b1 = Button(master=frm, text='Use Default Settings', command=default_button)
-            b2 = Button(master=frm, text='Custom Settings', command=custom_button)
-            b3 = Button(master=frm, text='Disable Automatic Startup', command=disable_button)
-            b1.pack(), b2.pack(), b3.pack()
-            frm.pack()
+                                   'before the window with the upcoming concerts is displayed'
+                                   '',wraplength=500).pack()
+
+        else:
+            Label(master=frm,text='The default settings are a 30 minute ' \
+                           'delay from startup before concert data is updated from the web, and a one hour delay ' \
+                           'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+        bfrm = Frame(master=frm)
+        b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
+        b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
+        b3 = Button(master=bfrm, text='Disable Automatic Startup', command=disable_button)
+        b1.grid(row=0,column=0), b2.grid(row=0,column=1), b3.grid(row=0,column=2)
+        bfrm.pack()
+        frm.pack()
 
     def add_to_startup_default(self,parent=None):
         """Creates a cron job with the default settings (30 mins after startup for the scraper to launch,
         an hour after startup for the main GUI to launch"""
+
         def cont_button():
             usr = ent.get()
-            self.scheduler.cron_enable(True)
-            self.scheduler.cron_setup(usr)
+            self.scheduler.enabledisable(True)
+            self.scheduler.activation_delay()
+            if sys.platform != 'win32':
+                self.scheduler.cron_setup(usr)
             parent.destroy()
 
         cronfrm_default = Frame(parent)
 
-        Label(master=parent, text='Enter your linux username, i.e. usr in home/usr').pack()
+        Label(master=parent, text='If you are on linux or macOS, enter your linux username, i.e. usr in home/usr, otherwise'
+                                  'just hit Continue').pack()
         ent = Entry(master=cronfrm_default )
         ent.delete(0,END)
         ent.insert(0,str(self.scheduler.user))
@@ -729,29 +783,32 @@ class Main_GUI:
             usr = entusr.get()
             scraper_delay = entdelay1.get()
             gui_delay = entdelay2.get()
-            schdl = SchedulerLinux()
-            schdl.cron_setup(usr, int(scraper_delay), int(gui_delay))
+            if sys.platform != 'win32':
+                self.scheduler.cron_setup(usr)
+            self.scheduler.activation_delay(int(scraper_delay), int(gui_delay))
             parent.destroy()
 
         cronfrm_custom = Frame(parent)
         cronfrm_custom.pack()
-        Label(master=cronfrm_custom, text='Enter your linux username, i.e. usr in home/usr').pack()
+        Label(master=cronfrm_custom, text='''If you are on linux or macOS, enter your linux username, i.e. usr 
+        in home/usr, otherwise leave this blank.''').pack()
         entusr = Entry(master=cronfrm_custom)
         entusr.delete(0,END)
         entusr.insert(0,self.scheduler.user)
         entusr.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
                                           'before the application updates concert data from the internet').pack()
         entdelay1 = Entry(master=cronfrm_custom)
         entdelay1.delete(0,END)
         entdelay1.insert(0,str(self.scheduler.web_scraper_delay))
         entdelay1.pack()
-        Label(master=cronfrm_custom, text='Enter the delay from startup (in seconds) you would like'
+        Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
                                           'before the window containing upcoming concert data is opened').pack()
         entdelay2 = Entry(master=cronfrm_custom)
         entdelay2.delete(0,END)
         entdelay2.insert(0,str(self.scheduler.gui_launch_delay))
         entdelay2.pack()
+
         Button(master=cronfrm_custom, text='Submit', command=cont_button_custom).pack()
 
     def view_startup_settings(self):
@@ -770,14 +827,6 @@ class Main_GUI:
                   text=f'GUI Window offset: Disabled').pack()
         Button(master=main_frame,text='Done',command=top.destroy).pack()
         main_frame.pack()
-
-    def exit_all(self):
-        '''kills any seperate threads and exits the application'''
-        global stop_all_threads
-        stop_all_threads = True
-        self.root.destroy()
-        sleep(5)
-        print([thread.name for thread in threading.enumerate()])
 
     def concert_time_to_update(self):
         """Updates the time range to display upcoming cocncerts in the GUI"""
@@ -802,19 +851,67 @@ class Main_GUI:
         message2.pack(),location_input.pack(), location_input_button.pack()
         location_frame.pack()
 
+    def enable_spotify(self):
+        """Gets the users spotify ID and attempts to validate credentials"""
+
+        top = Toplevel()
+        def spotint_send_button(event):
+            user_id = spot_usrsetup_field.get()
+            if user_id:
+                self.UpdateSettings.save_spotify_username(user_id)
+                spot_usrsetup.destroy()
+                try:
+                    Spotify_token_handler.spotify_get_token('playlist-read-private')  # playlist-read-private is the only scope needed, so this is hardcoded
+                except Exception as exe: # specific exceptions are handled elsewhere, this is set up mostly for debugging right now
+                    spot_usrsetup.destroy()
+                    error = f'{exe}'
+                    Label(master=top,text=error,wraplength=500).pack()
+                    top.update()
+                    time.sleep(5)
+                    top.destroy()
+                else:
+                    spot_usrsetup.destroy()
+                    SpotifyUpdate(top)
+            else:
+                top.destroy()
+
+        spot_usrsetup = Frame(top)
+        spot_usrsetup_dist = Label(spot_usrsetup,
+                                   text='Note: in order to impliment spotify integration your spotify ID '
+                                        'is required. In most cases this is not the same as your spotify '
+                                        'login information. In order to find your spotify ID go to '
+                                        'https://www.spotify.com/us/account/overview/ and click on the '
+                                        '\'Change Password\' tab and copy the device username to the field below. '
+                                        ''
+                                        'If you\'ve changed your mind, leave the field blank and hit enter to exit.',
+                                   wraplength=500)
+        spot_usrsetup_field = Entry(spot_usrsetup)
+        spot_usrsetup_button = Button(spot_usrsetup, text='Enter')
+        spot_usrsetup_button.bind('<Button-1>', spotint_send_button)
+        spot_usrsetup_dist.pack(), spot_usrsetup_button.pack(), spot_usrsetup_field.pack()
+        spot_usrsetup.pack()
+
+    def exit_all(self):
+        '''kills any seperate threads and exits the application'''
+        global stop_all_threads
+        stop_all_threads = True
+        self.root.destroy()
+        print([thread.name for thread in threading.enumerate()])
+
 class SpotifyUpdate:
     """GUI class for running through artist selection via spotify, this is essentially the same as the
     related methods found in the FirstTimeStartup class, but slightly modified to be able to run independently of
     the sequential order used in FirstTimeStartup"""
-    def __init__(self,parent,removed=None):
+    def __init__(self,parent,removed=None,user = None):
         self.root = parent
-        with open('user_settings','r') as settings:
+        with open(os.path.join('userdata','user_settings'),'r') as settings:
             data = json.load(settings)
             user_id = data['spotify_id']
+        if user is not None: user_id = user
         fr = Label(self.root,text='Updating Playlists - Please Wait')
         fr.pack()
         self.root.update()
-        self.spotifyapp = spot.SpotifyIntegration(user_id)
+        self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',user_id)
         self.spotifyapp = self.spotifyapp()
         playlists = next(self.spotifyapp)
         fr.destroy()
@@ -869,17 +966,6 @@ class SpotifyUpdate:
         spot_selbands.pack()
         for band in artists:
             spot_selbands_choices.insert(END,band)
-
-
-
-
-
-    #test.first_time_startup_events(s)
-    uid = '1214002279'
-
-    #FirstTimeStartup.concert_lookup(FirstTimeStartup,s)
-    #FirstTimeStartup.spotify_setup_user_input(FirstTimeStartup,s)
-
 
 if __name__ == '__main__':
     app = Tk()

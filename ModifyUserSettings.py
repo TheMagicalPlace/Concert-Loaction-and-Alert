@@ -1,9 +1,11 @@
 
+
+import json
+
 import requests
 from bs4 import BeautifulSoup as soup
 from geopy import geocoders
-import json
-
+import os
 
 class LocatorSetup:
     """The (poorly named) class containing the methods used to format and save the data from the first
@@ -19,7 +21,7 @@ class LocatorSetup:
         self.removed_bands = []
         self.spotify_id = None
         try:
-            with open('user_settings','r') as settings:
+            with open(os.path.join('userdata','user_settings'),'r') as settings:
                 data = json.load(settings)
                 for key,value in data.items():
                     if key == 'last_checked':
@@ -96,7 +98,7 @@ class LocatorSetup:
                 'last_checked':self.last_checked,
                 'concert_notification_time_to_display':self.concert_notification_time_to_display,# weeks, default time until concert to present notifications
                 'removed_bands':self.removed_bands}
-        with open('user_settings','w') as settings:
+        with open(os.path.join('userdata','user_settings'),'w') as settings:
             json.dump(data,settings)
 
 class LocatorMain(LocatorSetup):
@@ -107,11 +109,6 @@ class LocatorMain(LocatorSetup):
 
     def __call__(self):
         pass # Not Callable
-
-    def delete_bands(self):
-        '''Deletes band tracking for bands selected by the user'''
-        self.bands = yield self.bands
-        self.save_data()
 
     def update_user_location(self,location):
         '''Changes user location'''
@@ -124,6 +121,9 @@ class LocatorMain(LocatorSetup):
         self.spotify_user_id = None
         self.save_data()
 
+    def save_spotify_username(self,user_id):
+        self.spotify_user_id = user_id
+        self.save_data()
 
     def add_bands(self,bands):
         super().get_bands(bands)
@@ -144,3 +144,6 @@ class LocatorMain(LocatorSetup):
         self.concert_notification_time_to_display = ttd
         self.save_data()
 
+if __name__ == '__main__':
+    l = LocatorMain()
+    l.save_data()

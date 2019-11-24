@@ -4,6 +4,7 @@ import time
 from datetime import timedelta,date as dt_date
 from collections import defaultdict
 import re
+import os
 
 from copy import copy
 class Notifications:
@@ -12,20 +13,20 @@ class Notifications:
         """most of this is just defining the conversion dictionaries for the band in order to (try to) sanatize the
         database input. """
         current_date = dt_date.today().isoformat()
-        with open('user_settings','r') as settings:
+        with open(os.path.join('userdata','user_settings'),'r') as settings:
             data = json.load(settings)
             self.bands = data['bands']
             self.concert_notification_time_to_display = data['concert_notification_time_to_display']
             self.banddb = {band: str("_".join(band.split(' '))) for band in self.bands}
             for band in self.banddb:
                 self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
-        self.concert_database = sqlite.connect('concert_db.db')
+        self.concert_database = sqlite.connect(os.path.join('userdata','concert_db.db'))
         try:
             with self.concert_database as cdb:
              cur = cdb.cursor()
 
         except sqlite.OperationalError as error:
-            print(error)
+
             with self.concert_database as cdb:
                 cur = cdb.cursor()
                 cur.execute('CREATE TABLE Upcoming (band TEXT,location TEXT,time TEXT,date DATE, days_to TEXT,days_to_int INTEGER)')
@@ -48,7 +49,7 @@ class Notifications:
                 result = cur.execute('SELECT band,date FROM Upcoming').fetchall()
             [upcoming_events[band].append(date) for band,date in result]
         except sqlite.OperationalError as error:
-            print(error)
+
             with self.concert_database as cdb:
                 cur = cdb.cursor()
                 cur.execute(
@@ -80,6 +81,9 @@ class Notifications:
                     current = time.strptime(dt_date.today().isoformat(),'%Y-%m-%d')
                     time_to = time.mktime(date)-time.mktime(current)
                     time_to_repr = str(timedelta(seconds=time_to))[:-9]
+                    if not time_to_repr:
+                        time_to_repr = 'Today'
+
                     if time_to < 60*60*24*7*int(round(float(self.concert_notification_time_to_display))): # set in InitialSetup.LocatorMain, default 2 weeks
 
                         # This updates the 'time_to' colunm in the database if an entry for the current band and date exist,
@@ -103,6 +107,10 @@ class Notifications:
         return up,framedimensions
 
 if __name__ == '__main__':
+    e = str(timedelta(seconds=60*60*12))[:2]+' hours'
+    print(bool(e) == True)
+    if e:
+        print(e)
     test = Notifications()
     test.concert_notification_time_to_display = 1
     test.check_dates()

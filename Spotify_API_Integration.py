@@ -1,11 +1,16 @@
 
 from spotipy.oauth2 import SpotifyClientCredentials
-import spotipy,spotipy.util as util
+
 import time
 import json
-from collections import  defaultdict
+from collections import defaultdict
 import logging
+
+import spotipy
+
 import Spotify_token_handler
+
+
 class SpotifyIntegration:
     """Despite the name, this class contains functions both for the aquisition of the artists a user wished to track
     using the Spotify API, as well as extracting and storing the important bits in the database used across this app"""
@@ -19,11 +24,13 @@ class SpotifyIntegration:
 
     def __init__(self,scope,user_id):
         self.uid = str(user_id)
-        self.token = Spotify_token_handler.spotify_get_token(scope)['access_token']
+        self.token = Spotify_token_handler.spotify_get_token(scope)
+
 
     def __call__(self):
         """the coroutine, with each yield used to return control to the GUI in order to get data for the next method"""
-
+        if isinstance(self.token,Exception):
+            return self.token
         self.sp = spotipy.Spotify(auth=self.token)
         #What does this do?
         self.sp.trace = False
@@ -68,7 +75,7 @@ class SpotifyIntegration:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    with open('user_settings','r') as settings:
+    with open('userdata\\user_settings','r') as settings:
         data = json.load(settings)
         user_id = data['spotify_id']
 
