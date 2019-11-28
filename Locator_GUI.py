@@ -1,16 +1,14 @@
-
-from time import sleep
-import  Spotify_token_handler
-from tkinter import *
-import threading
 import queue
-from os import getcwd
+import threading
+from time import sleep
+from tkinter import *
 
-from ConcertScraper import ConcertFinder as CFinder
-from scheduler_setup import *
-from Notifier import *
 import Spotify_API_Integration as spot
-from ModifyUserSettings import LocatorSetup,LocatorMain
+import Spotify_token_handler
+from ConcertScraper import ConcertFinder as CFinder
+from ModifyUserSettings import LocatorSetup, LocatorMain
+from Notifier import *
+from scheduler_setup import *
 
 stop_all_threads = False
 
