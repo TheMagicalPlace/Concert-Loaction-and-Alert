@@ -9,7 +9,7 @@ from os import getcwd
 from ConcertScraper import ConcertFinder as CFinder
 from scheduler_setup import *
 from Notifier import *
-import WindowsFiles.Spotify_API_Integration as spot
+import Spotify_API_Integration as spot
 from ModifyUserSettings import LocatorSetup,LocatorMain
 
 stop_all_threads = False
@@ -623,9 +623,9 @@ class Main_GUI:
         """Manual addition of artists to user_settings using the IOsetter mentioned in the __init__ docstring"""
         top = Toplevel()
 
-        def message2_button(event,parent):
+        def message2_button():
             bands = band_input.get()
-
+            bands = bands.split(',')
             self.UpdateSettings.add_bands(bands)
             self.update_GUI_variables()
             top.destroy()
@@ -635,8 +635,8 @@ class Main_GUI:
         man_imput_2text = 'Input each band you would like to track, seperated by commas'
         message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
         band_input = Entry(band_in_frame)
-        band_input_button = Button(band_in_frame)
-        band_input_button.bind('<Button-1>', message2_button)
+        band_input_button = Button(text='Submit',master=band_in_frame,command=message2_button)
+
         top.update()
         message2.pack(), band_input.pack(), band_input_button.pack()
         band_in_frame.pack()
@@ -670,7 +670,7 @@ class Main_GUI:
         """Re-adding tracking  of artists removed via self.remove_artist to user_settings using the IOsetter mentioned in the __init__ docstring"""
         top = Toplevel()
 
-        def button_event_listbox(bands=self.bands):
+        def button_event_listbox():
             removed = [list_choices.get(i) for i in list_choices.curselection()]
             if removed:
                 removed_bands = removed
