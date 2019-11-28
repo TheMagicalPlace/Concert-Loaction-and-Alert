@@ -110,11 +110,13 @@ class FirstTimeStartup:
 
     def message1(self):
         """This does nothing other than note that the program has been started"""
+
         def message1_terminate(event):
             self.root.update()
             sleep(1)
             frame1.destroy()
             self.message2()
+
         frame1 = Frame(self.root)
         message1 = Label(frame1, text='Performing First Time Startup')
         message1.pack()
@@ -123,6 +125,7 @@ class FirstTimeStartup:
 
     def message2(self):
         """Notes down user location and sends it to the LocatorSetup (from ModifyUserSettings.py"""
+
         def message2_button(event):
             val = location_input.get()
 
@@ -135,7 +138,7 @@ class FirstTimeStartup:
         message2text = ' In order to only keep track of nearby concerts, your location is requred. Please input ' \
                        'the location you would like to track from in the form City,State. Note that this application is ' \
                        'currently limited to only United States residents'
-        message2 = Label(frame2, text=message2text,wraplength=500)
+        message2 = Label(frame2, text=message2text, wraplength=500)
         location_input = Entry(frame2)
         location_input_button = Button(frame2)
         location_input_button.bind('<Button-1>', message2_button)
@@ -151,7 +154,6 @@ class FirstTimeStartup:
 
         """
         def spotint_yes_button(event):
-
             spotint.destroy()
             self.root.update()
             self.spotify_setup_user_input()
@@ -167,8 +169,8 @@ class FirstTimeStartup:
         spotint_text = Label(spotint,text='Would you like to use one (or more) of your spotify playlists in order to '
                                           'determine what bands to track?',wraplength=500)
         bfrm = Frame(master=spotint)
-        spotint_yes = Button(bfrm,text='Yes')
-        spotint_no = Button(bfrm,text='No')
+        spotint_yes = Button(bfrm, text='Yes')
+        spotint_no = Button(bfrm, text='No')
 
         spotint_yes.bind('<Button-1>',spotint_yes_button)
         spotint_no.bind('<Button-1>', spotint_no_button)
@@ -271,9 +273,9 @@ class FirstTimeStartup:
 
     def manual_band_input(self):
         """For manual entry of bands to track, YMMV. Also this is just a copy of message 2 in terms of code"""
-        def message2_button(event):
+        def message2_button():
             val = band_input.get()
-
+            val = val.split(',')
             self.user_data_setup.send('Not Given')
             self.user_data_setup.send(val)
             band_in_frame.destroy()
@@ -283,8 +285,7 @@ class FirstTimeStartup:
         man_imput_2text = 'Input each band you would like to track, seperated by commas'
         message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
         band_input = Entry(band_in_frame)
-        band_input_button = Button(band_in_frame)
-        band_input_button.bind('<Button-1>', message2_button)
+        band_input_button = Button(text='Submit',master=band_in_frame,command=message2_button)
         self.root.update()
         message2.pack(), band_input.pack(), band_input_button.pack()
         band_in_frame.pack()
