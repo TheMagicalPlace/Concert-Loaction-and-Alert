@@ -12,7 +12,7 @@ def initialize_scheduler():
     user_os = sys.platform
     if user_os in ['linux','darwin']:
         return SchedulerLinux()
-    elif user_os is 'Win32':
+    elif user_os == 'win32':
         return SchedulerWindows()
     else:
         return 'Unsupported Operating System'

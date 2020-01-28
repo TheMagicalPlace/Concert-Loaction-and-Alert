@@ -2,7 +2,8 @@ import queue
 import threading
 from time import sleep
 from tkinter import *
-
+from tkinter.ttk import *
+import tkinter
 import Spotify_API_Integration as spot
 import Spotify_token_handler
 from ConcertScraper import ConcertFinder as CFinder
@@ -36,7 +37,8 @@ class TkinterEventSubprocess(threading.Thread):
                     break
         except GeneratorExit:
             self.queue.put('Done')
-
+        except StopIteration:
+            self.queue.put('Done')
 class FirstTimeStartup:
     """
     This class contains all of the GUI states needed for the first time startup of the app (i.e. getting user location.
@@ -274,8 +276,10 @@ class FirstTimeStartup:
         def message2_button():
             val = band_input.get()
             val = val.split(',')
-            self.user_data_setup.send('Not Given')
+            if val[-1] == '':
+                val = val[:-1]
             self.user_data_setup.send(val)
+
             band_in_frame.destroy()
             self.concert_lookup()
 
@@ -489,6 +493,20 @@ class Main_GUI:
     of the application, with all of the actual heavy lifting offloaded to the other files. I've tried to comment where
     this happens such that it should hopefully be clear when the other files are being called"""
 
+    @classmethod
+    def setup_styles(cls):
+        button_style = Style()
+        button_style.configure("TButton", foreground='black',backround='white')
+        concert_frame_style = Style()
+        concert_frame_style.configure("CS.TFrame",padding=200,foreground='black')
+        concert_info_label = Style()
+        concert_info_label.configure("CIL.TLabel",)
+        CI_canvas = Style()
+        CI_canvas.configure("CIS.TCanvas",foreground='black')
+
+    def config_table_rows(self):
+        pass
+
     def __init__(self,parent):
         """Initializes the variables used across class methods, of note is that UpdateSettings is an instance of
         LocatorMain, and is used to update the user_settings file whenever changes are made. Those changes are then reflected
@@ -496,6 +514,7 @@ class Main_GUI:
         """Initializes all the important stuff used in the window. Notable things initialized here include the
         'IOsetter' which is an instance that is used to modify and update the 'user_settings' file based on manual input.
         The class for this instance can be found in ModifyUserSettings.py as LocatorMain"""
+
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
         self.queue = queue.Queue()
@@ -510,6 +529,7 @@ class Main_GUI:
     def __call__(self):
         """Initializes the main window, which includes the menu as well as the information for the upcoming concerts"""
         menu = Menu(self.root)
+        self.setup_styles()
         self.root.config(menu=menu)
 
         # Spotify setting menu bar
@@ -542,7 +562,7 @@ class Main_GUI:
         exitmenu.add_command(label='Exit all processes (incl. concert search)', command=self.exit_all)
 
         # Getting and formatting the upcoming concert info from the database
-        self.concert_frame = Frame(self.root,width=768, height=576,borderwidth=5,relief=RIDGE,pady=20)
+        self.concert_frame = Frame(self.root,style="CS.TFrame")
         self.concert_frame.pack()
         up,framedimensions = Notifications().notify_user_()
         self.displaybar(self.concert_frame,up,framedimensions)
@@ -559,7 +579,6 @@ class Main_GUI:
         self.root.mainloop()
 
 
-
     def update_GUI_variables(self):
         """updates the instance variables after user_settings is changed"""
         with open(os.path.join('userdata','user_settings'),'r') as settings:
@@ -573,10 +592,9 @@ class Main_GUI:
     def displaybar(self,parent,iter_data,framedimensions):
         """This is used to display & format the concert data in a (sort of) aesthetic format"""
 
-        dbframe = Frame(master=parent)
-        dbframe.pack()
-        scrollbar = Scrollbar(dbframe)
-        innerholder = Canvas(master=dbframe,height=600,width=970,yscrollcommand=scrollbar.set)
+
+        scrollbar = Scrollbar(parent)
+        innerholder = Canvas(master=parent,height=600,width=970,yscrollcommand=scrollbar.set,)
 
         scrollbar.pack(side=RIGHT, fill=Y)
         n = Frame(master=innerholder)
@@ -586,7 +604,7 @@ class Main_GUI:
         innerholder.create_window(0, 0, window=n,anchor=NW)
         for row in iter_data:
             r = iter_data.index(row)
-            if r == 0: Label(n,borderwidth=0,relief=SUNKEN,pady=1,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
+            if r == 0: Label(n,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
             else: r+=1
             for val in row:
                 if row.index(val) == 0:
@@ -595,7 +613,7 @@ class Main_GUI:
                     except KeyError:
                         value = val
                 else: value = val
-                Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+                tkinter.Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
         scrollbar.config(command=innerholder.yview)
 
     def spotify_update(self):
