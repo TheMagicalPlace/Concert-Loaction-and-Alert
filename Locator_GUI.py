@@ -500,9 +500,15 @@ class Main_GUI:
         concert_frame_style = Style()
         concert_frame_style.configure("CS.TFrame",padding=200,foreground='black')
         concert_info_label = Style()
-        concert_info_label.configure("CIL.TLabel",)
-        CI_canvas = Style()
-        CI_canvas.configure("CIS.TCanvas",foreground='black')
+        concert_info_label.configure("CIL.TLabel",font='helvetica 10',justify=CENTER,wraplength=150,padding=[5,0,5,0],anchor=CENTER)
+        CI_canvas_frame = Style()
+        CI_canvas_frame.configure("CIS.TFrame",borderwidth=5,relief='sunken',padding=[10,10,20,20],background='white')
+        misc_frame_style = Style()
+        misc_frame_style.configure("CM.TFrame",borderwidth=5, relief=RIDGE,padding=[10,10,20,20])
+        space_frame = Style()
+        space_frame.configure("CFS.TFrame")
+        seperator = Style()
+        seperator.configure("spacer.TFrame",padding=0,background='black')
 
     def config_table_rows(self):
         pass
@@ -514,7 +520,8 @@ class Main_GUI:
         """Initializes all the important stuff used in the window. Notable things initialized here include the
         'IOsetter' which is an instance that is used to modify and update the 'user_settings' file based on manual input.
         The class for this instance can be found in ModifyUserSettings.py as LocatorMain"""
-
+        overall = Style()
+        overall.theme_use('winnative')
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
         self.queue = queue.Queue()
@@ -531,7 +538,7 @@ class Main_GUI:
         menu = Menu(self.root)
         self.setup_styles()
         self.root.config(menu=menu)
-
+        self.main = Frame(self.root)
         # Spotify setting menu bar
         spotmenu = Menu(menu)
         menu.add_cascade(label='Spotify Settings',menu=spotmenu)
@@ -562,12 +569,17 @@ class Main_GUI:
         exitmenu.add_command(label='Exit all processes (incl. concert search)', command=self.exit_all)
 
         # Getting and formatting the upcoming concert info from the database
-        self.concert_frame = Frame(self.root,style="CS.TFrame")
-        self.concert_frame.pack()
+        Frame(self.main,height=30).grid(row=0)
+        Frame(self.main, width=30,style='CFS.TFrame').grid(row=1, column=0)
+        Frame(self.main, width=30,style='CFS.TFrame').grid(row=1, column=2)
+        Frame(self.main,height=30,style='CFS.TFrame').grid(row=3)
+
+        self.concert_frame = Frame(self.main,style="CS.TFrame")
+        self.concert_frame.grid(row=1,column=1)
         up,framedimensions = Notifications().notify_user_()
         self.displaybar(self.concert_frame,up,framedimensions)
 
-
+        self.main.pack()
 
         thread_ids = [ thr.name for thr in threading.enumerate()]
 
@@ -594,18 +606,26 @@ class Main_GUI:
 
 
         scrollbar = Scrollbar(parent)
-        innerholder = Canvas(master=parent,height=600,width=970,yscrollcommand=scrollbar.set,)
-
-        scrollbar.pack(side=RIGHT, fill=Y)
-        n = Frame(master=innerholder)
-
+        innerholder = Canvas(master=parent,height=400,width=596,yscrollcommand=scrollbar.set,bg='white',border=0)
+        innerholder.config(scrollregion=(0, 0, 596, 400))
+        topframe = Frame(master=innerholder,height=400,width=598)
 
         innerholder.pack(side='left')
-        innerholder.create_window(0, 0, window=n,anchor=NW)
+        innerholder.create_window(0, 0, window=topframe,anchor=NW)
+
+        # This is so that the canvas can be a fixed size, trust me when I say its a massive pain to try and do otherwise
+        topframe.columnconfigure(0,minsize=150)
+        topframe.columnconfigure(1, minsize=150)
+        topframe.columnconfigure(2, minsize=80)
+        topframe.columnconfigure(3, minsize=90)
+        topframe.columnconfigure(4, minsize=130)
+
+
         for row in iter_data:
             r = iter_data.index(row)
-            if r == 0: Label(n,width=sum(framedimensions)+2*len(row)).grid(row=1,columnspan=len(row),pady=0)
-            else: r+=1
+            # TODO remove this when done testing
+            colors = (c for c in ['blue', 'green', 'yellow', 'white','orange'])
+            # Generate each row & input data
             for val in row:
                 if row.index(val) == 0:
                     try:
@@ -613,8 +633,19 @@ class Main_GUI:
                     except KeyError:
                         value = val
                 else: value = val
-                tkinter.Label(n,text=value,borderwidth=1,width=framedimensions[row.index(val)],relief=RAISED).grid(row=r, column=row.index(val), pady=1)
+                Label(topframe,text=value,style='CIL.TLabel',background=next(colors)).grid(row=r*2,column=row.index(val),sticky='ew')
+            Frame(topframe, style='spacer.TFrame', width=600,height=3).grid(row=r*2+1, columnspan=5)
+            r+=1
+
+        scrollbar.pack(side=RIGHT, fill=Y)
         scrollbar.config(command=innerholder.yview)
+        self.root.update()
+        topframe.update()
+
+        # Increasing scroll radius if needed
+        if len(iter_data)*20 > 400:
+            innerholder.config(scrollregion=(0, 0, 596, len(iter_data)*20))
+
 
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
@@ -642,7 +673,9 @@ class Main_GUI:
 
         def message2_button():
             bands = band_input.get()
+
             bands = bands.split(',')
+            bands = [band for band in bands if band != ' ' and band != '']
             self.UpdateSettings.add_bands(bands)
             self.update_GUI_variables()
             top.destroy()
@@ -855,7 +888,7 @@ class Main_GUI:
             Notifications().check_dates()
             top.destroy()
             self.concert_frame.destroy()
-            self.concert_frame = Frame(self.root, width=768, height=576, borderwidth=5, relief=RIDGE,pady=20)
+            self.concert_frame = Frame(self.root,style='CM.TFrame', width=768, height=576, )
             self.concert_frame.pack()
             up, framedimensions = Notifications().notify_user_()
             self.displaybar(self.concert_frame, up, framedimensions)
