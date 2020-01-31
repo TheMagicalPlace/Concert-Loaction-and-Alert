@@ -495,12 +495,15 @@ class Main_GUI:
 
     @classmethod
     def setup_styles(cls):
+        Style().configure('textlabel.TLabel',padding=[15,15,15,15],wraplength=500,font='arial 11',
+                          background='white',border=5,relief=RIDGE)
+        main_style = Style().configure("Main.TFrame",background='#3A6596')
         button_style = Style()
         button_style.configure("TButton", foreground='black',backround='white')
         concert_frame_style = Style()
         concert_frame_style.configure("CS.TFrame",padding=200,foreground='black')
         concert_info_label = Style()
-        concert_info_label.configure("CIL.TLabel",font='helvetica 10',justify=CENTER,wraplength=150,padding=[5,0,5,0],anchor=CENTER)
+        concert_info_label.configure("CIL.TLabel",font='arial 10 bold',justify=CENTER,wraplength=150,padding=[5,0,5,0],anchor=CENTER)
         CI_canvas_frame = Style()
         CI_canvas_frame.configure("CIS.TFrame",borderwidth=5,relief='sunken',padding=[10,10,20,20],background='white')
         misc_frame_style = Style()
@@ -524,6 +527,7 @@ class Main_GUI:
         overall.theme_use('winnative')
         self.UpdateSettings = LocatorMain()
         self.root = parent # a Tk() instance
+        self.root.title('Convenient Concerts')
         self.queue = queue.Queue()
         self.update_GUI_variables()
         # This is a reverse of what is done elsewhere, where the database friendly band names are converted back to normal
@@ -538,12 +542,12 @@ class Main_GUI:
         menu = Menu(self.root)
         self.setup_styles()
         self.root.config(menu=menu)
-        self.main = Frame(self.root)
+        self.main = Frame(self.root,style="Main.TFrame")
         # Spotify setting menu bar
-        spotmenu = Menu(menu)
-        menu.add_cascade(label='Spotify Settings',menu=spotmenu)
-        spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
-        spotmenu.add_command(label='Enable Spotify',command=self.enable_spotify)
+        self.spotmenu = Menu(menu)
+        menu.add_cascade(label='Spotify Settings',menu=self.spotmenu)
+        self.spotmenu.add_command(label='Update Tracked Artists',command=self.spotify_update)
+        self.spotmenu.add_command(label='Enable Spotify',command=self.enable_spotify)
 
         # Manual initiation of concert lookup
         self.concmenu = Menu(menu)
@@ -569,16 +573,18 @@ class Main_GUI:
         exitmenu.add_command(label='Exit all processes (incl. concert search)', command=self.exit_all)
 
         # Getting and formatting the upcoming concert info from the database
-        Frame(self.main,height=30).grid(row=0)
-        Frame(self.main, width=30,style='CFS.TFrame').grid(row=1, column=0)
-        Frame(self.main, width=30,style='CFS.TFrame').grid(row=1, column=2)
-        Frame(self.main,height=30,style='CFS.TFrame').grid(row=3)
+        Frame(self.main,height=20,style="Main.TFrame").grid(row=0)
+        Frame(self.main, width=20,style='Main.TFrame').grid(row=1, column=0)
+        Frame(self.main, width=20,style='Main.TFrame').grid(row=1, column=2)
+        Frame(self.main,height=20,style='Main.TFrame').grid(row=3)
 
         self.concert_frame = Frame(self.main,style="CS.TFrame")
         self.concert_frame.grid(row=1,column=1)
         up,framedimensions = Notifications().notify_user_()
         self.displaybar(self.concert_frame,up,framedimensions)
-
+        print(self.UpdateSettings.spotify_id)
+        if self.UpdateSettings.spotify_id is None:
+           self.spotmenu.entryconfig(1,state=DISABLED)
         self.main.pack()
 
         thread_ids = [ thr.name for thr in threading.enumerate()]
@@ -604,9 +610,10 @@ class Main_GUI:
     def displaybar(self,parent,iter_data,framedimensions):
         """This is used to display & format the concert data in a (sort of) aesthetic format"""
 
-
-        scrollbar = Scrollbar(parent)
-        innerholder = Canvas(master=parent,height=400,width=596,yscrollcommand=scrollbar.set,bg='white',border=0)
+        s = Style()
+        s.configure("Vertical.TScrollbar",arrowcolor="red")
+        scrollbar = Scrollbar(parent,style="Vertical.TScrollbar")
+        innerholder = Canvas(master=parent,height=400,width=600,yscrollcommand=scrollbar.set,bg='white',border=5,relief="solid")
         innerholder.config(scrollregion=(0, 0, 596, 400))
         topframe = Frame(master=innerholder,height=400,width=598)
 
@@ -624,7 +631,7 @@ class Main_GUI:
         for row in iter_data:
             r = iter_data.index(row)
             # TODO remove this when done testing
-            colors = (c for c in ['blue', 'green', 'yellow', 'white','orange'])
+            colors = (c for c in ['#D3D3D3', '#D3D3D3', '#D3D3D3', '#D3D3D3','#D3D3D3'])
             # Generate each row & input data
             for val in row:
                 if row.index(val) == 0:
@@ -644,8 +651,7 @@ class Main_GUI:
 
         # Increasing scroll radius if needed
         if len(iter_data)*20 > 400:
-            innerholder.config(scrollregion=(0, 0, 596, len(iter_data)*20))
-
+            innerholder.config(scrollregion=(-5, -5, 596, len(iter_data)*20))
 
     def spotify_update(self):
         """Initializes and calls an instance of the SpotifyUpdate class from Spotify_API_Integration"""
@@ -683,7 +689,7 @@ class Main_GUI:
 
         band_in_frame = Frame(top)
         man_imput_2text = 'Input each band you would like to track, seperated by commas'
-        message2 = Label(band_in_frame, text=man_imput_2text,wraplength=500)
+        message2 = Label(band_in_frame, text=man_imput_2text,style="textlabel.TLabel")
         band_input = Entry(band_in_frame)
         band_input_button = Button(text='Submit',master=band_in_frame,command=message2_button)
 
@@ -706,7 +712,7 @@ class Main_GUI:
             top.destroy()
 
         band_in_frame = Frame(top)
-        frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
+        frame_description = Label(band_in_frame,text='Select which bands you would like to stop tracking',style="textlabel.TLabel")
         list_choices = Listbox(band_in_frame,selectmode=MULTIPLE)
         frame_button_1 = Button(band_in_frame,text='Done',command=button_event_listbox)
 
@@ -717,7 +723,8 @@ class Main_GUI:
             list_choices.insert(END,band)
 
     def add_removed_artist(self):
-        """Re-adding tracking  of artists removed via self.remove_artist to user_settings using the IOsetter mentioned in the __init__ docstring"""
+        """Re-adding tracking  of artists removed via self.remove_artist to
+         user_settings using the IOsetter mentioned in the __init__ docstring"""
         top = Toplevel()
 
         def button_event_listbox():
@@ -734,7 +741,8 @@ class Main_GUI:
 
 
         band_in_frame = Frame(top)
-        frame_description = Label(band_in_frame,text='Select which bands you would stop tracking')
+        frame_description = Label(band_in_frame,text='Select which bands you would like to resume tracking',
+                                  style="textlabel.TLabel")
         list_choices = Listbox(band_in_frame,selectmode=MULTIPLE)
         frame_button_1 = Button(band_in_frame,text='Done',command=button_event_listbox)
 
@@ -789,12 +797,12 @@ class Main_GUI:
                                    'enabling it and setting the delay as desired. The default settings are a 30 minute'
                                    'delay from startup before concert data is updated from the web, and a one hour delay'
                                    'before the window with the upcoming concerts is displayed'
-                                   '',wraplength=500).pack()
+                                   '',style="textlabel.TLabel").pack()
 
         else:
             Label(master=frm,text='The default settings are a 30 minute ' \
                            'delay from startup before concert data is updated from the web, and a one hour delay ' \
-                           'before the window with the upcoming concerts is displayed',wraplength=500).pack()
+                           'before the window with the upcoming concerts is displayed',style="textlabel.TLabel").pack()
         bfrm = Frame(master=frm)
         b1 = Button(master=bfrm, text='Use Default Settings', command=default_button)
         b2 = Button(master=bfrm, text='Custom Settings', command=custom_button)
@@ -818,7 +826,7 @@ class Main_GUI:
         cronfrm_default = Frame(parent)
 
         Label(master=parent, text='If you are on linux or macOS, enter your linux username, i.e. usr in home/usr, otherwise'
-                                  'just hit Continue').pack()
+                                  'just hit Continue',style="textlabel.TLabel").pack()
         ent = Entry(master=cronfrm_default )
         ent.delete(0,END)
         ent.insert(0,str(self.scheduler.user))
@@ -841,19 +849,19 @@ class Main_GUI:
         cronfrm_custom = Frame(parent)
         cronfrm_custom.pack()
         Label(master=cronfrm_custom, text='''If you are on linux or macOS, enter your linux username, i.e. usr 
-        in home/usr, otherwise leave this blank.''').pack()
+        in home/usr, otherwise leave this blank.''',style="textlabel.TLabel").pack()
         entusr = Entry(master=cronfrm_custom)
         entusr.delete(0,END)
         entusr.insert(0,self.scheduler.user)
         entusr.pack()
         Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
-                                          'before the application updates concert data from the internet').pack()
+                                          'before the application updates concert data from the internet',style="textlabel.TLabel").pack()
         entdelay1 = Entry(master=cronfrm_custom)
         entdelay1.delete(0,END)
         entdelay1.insert(0,str(self.scheduler.web_scraper_delay))
         entdelay1.pack()
         Label(master=cronfrm_custom, text='Enter the delay from startup (in minutes) you would like'
-                                          'before the window containing upcoming concert data is opened').pack()
+                                          'before the window containing upcoming concert data is opened',style="textlabel.TLabel").pack()
         entdelay2 = Entry(master=cronfrm_custom)
         entdelay2.delete(0,END)
         entdelay2.insert(0,str(self.scheduler.gui_launch_delay))
@@ -866,9 +874,9 @@ class Main_GUI:
         main_frame = Frame(top)
         if self.scheduler.init_on_startup:
 
-            Label(master=main_frame,text=f'Launch on startup: Enabled').pack()
-            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay//60} Minutes after startup').pack()
-            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay//60} Minutes after startup').pack()
+            Label(master=main_frame,text=f'Launch on startup: Enabled',style="textlabel.TLabel").pack()
+            Label(master=main_frame,text=f'Web Scraper offset : {self.scheduler.web_scraper_delay//60} Minutes After Startup',style="textlabel.TLabel").pack()
+            Label(master=main_frame,text=f'GUI Window offset: {self.scheduler.gui_launch_delay//60} Minutes After Startup',style="textlabel.TLabel").pack()
         else:
             Label(master=main_frame,text='Launch on startup: Disabled').pack()
             Label(master=main_frame,
@@ -888,16 +896,16 @@ class Main_GUI:
             Notifications().check_dates()
             top.destroy()
             self.concert_frame.destroy()
-            self.concert_frame = Frame(self.root,style='CM.TFrame', width=768, height=576, )
-            self.concert_frame.pack()
+            self.concert_frame = Frame(self.main,style='CS.TFrame', )
+            self.concert_frame.grid(row=1,column=1)
             up, framedimensions = Notifications().notify_user_()
             self.displaybar(self.concert_frame, up, framedimensions)
 
         location_frame = Frame(top)
         frame_input_text = 'Input how many weeks in advance you would like concert information to be displayed.'
-        message2 = Label(location_frame, text=frame_input_text,wraplength=500)
+        message2 = Label(location_frame, text=frame_input_text,style="textlabel.TLabel")
         location_input = Entry(location_frame)
-        location_input_button = Button(location_frame,command=button_event)
+        location_input_button = Button(location_frame,command=button_event,text='Submit')
         message2.pack(),location_input.pack(), location_input_button.pack()
         location_frame.pack()
 
@@ -957,7 +965,7 @@ class SpotifyUpdate:
         with open(os.path.join('userdata','user_settings'),'r') as settings:
             data = json.load(settings)
             user_id = data['spotify_id']
-        if user is not None: user_id = user
+        user_id = user
         fr = Label(self.root,text='Updating Playlists - Please Wait')
         fr.pack()
         self.root.update()

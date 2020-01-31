@@ -141,24 +141,26 @@ class ConcertFinder:
         """sequentially iterates through each band in user_settings, with one band looked up
         per call"""
         bands = (band for band in self.bands)
-
-        while bands:
-            band = next(bands)
-            yield self.bands.index(band)
-            # The database is reopened for each band so that in the event the web scraper exits unexpectedly
-            # only data for the last band is lost
-            with self.concert_database as cdb:
-                self.concerts = defaultdict(list)
-                cur = cdb.cursor()
-                self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
-                try:
-                    concert_dates = [cdate[0] for cdate in cur.execute(f'SELECT Date FROM {self.banddb[band]}').fetchall()]
-                    self._website_search_songkick(band,concert_dates)
-                except sqlite.OperationalError:
-                    cur.execute(f"CREATE TABLE {self.banddb[band]} "
-                                f"(Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
-                    self._website_search_songkick(band) # the web scraper
-                self._band_info_write(band,cur)
+        try:
+            while bands:
+                band = next(bands)
+                yield self.bands.index(band)
+                # The database is reopened for each band so that in the event the web scraper exits unexpectedly
+                # only data for the last band is lost
+                with self.concert_database as cdb:
+                    self.concerts = defaultdict(list)
+                    cur = cdb.cursor()
+                    self.banddb[band] = re.sub(r'[\[|\-*/<>\'\"&+%,.=~!^()\]]', '', self.banddb[band])
+                    try:
+                        concert_dates = [cdate[0] for cdate in cur.execute(f'SELECT Date FROM {self.banddb[band]}').fetchall()]
+                        self._website_search_songkick(band,concert_dates)
+                    except sqlite.OperationalError:
+                        cur.execute(f"CREATE TABLE {self.banddb[band]} "
+                                    f"(Date DATE,Location TEXT,Distance TEXT, Time TEXT,IsInRange TEXT)")
+                        self._website_search_songkick(band) # the web scraper
+                    self._band_info_write(band,cur)
+        except StopIteration:
+            print('Done!')            # this is here to catch the expected error
 
 
 

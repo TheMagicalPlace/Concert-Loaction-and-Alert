@@ -102,11 +102,7 @@ class Notifications:
             cur = cdb.cursor()
             up = list(cur.execute('SELECT band,location,time,date,days_to FROM Upcoming ORDER BY Date'))
             up.insert(0, ['Band', 'Location', 'Time', 'Date', 'Days until concert'])
-            for u in up:
-                for l in u:
-                    print(l,len(l))
             framedimensions = [max([len(j) for j in i]) for i in list(zip(*copy(up)))]
-            print(framedimensions)
             up = list(up)
         return up,framedimensions
 
