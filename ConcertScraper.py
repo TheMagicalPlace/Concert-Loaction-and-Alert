@@ -1,19 +1,20 @@
 
 
 
-import re
-from collections import defaultdict
-import sqlite3 as sqlite
-from pathlib import Path
-import json as json
 import datetime
+import json as json
 import logging
 import os.path
+import re
+import sqlite3 as sqlite
+from collections import defaultdict
+from pathlib import Path
 
 import bs4
 import requests
 
 from LocationFilter import LocationFilter
+
 
 class ConcertFinder:
     """Contains the methods used in the lookup of concerts near the user's given location and save them

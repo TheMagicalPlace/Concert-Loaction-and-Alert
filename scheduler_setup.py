@@ -1,12 +1,11 @@
-import sys
 import json
 from os import getcwd
 import os.path
+import sys
+from os import getcwd
 
 from crontab import CronTab
 
-from collections import abc
-import sys
 
 def initialize_scheduler():
     user_os = sys.platform

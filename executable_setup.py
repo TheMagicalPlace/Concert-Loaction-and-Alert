@@ -1,4 +1,5 @@
 import sys
+
 import cx_Freeze
 
 # Dependencies are automatically detected, but it might need fine tuning.

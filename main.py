@@ -1,12 +1,12 @@
-
-
-import os
-import logging
 import datetime
-import json
 
 from Locator_GUI import *
 from Notifier import Notifications
+import datetime
+
+from Locator_GUI import *
+from Notifier import Notifications
+
 
 def activation_delay():
     '''This method is used to automatically update the upcoming concerts & is run on a delayed timer to

@@ -3,10 +3,11 @@ import threading
 from time import sleep
 from tkinter import *
 from tkinter.ttk import *
-import tkinter
+
 import Spotify_API_Integration as spot
 import Spotify_token_handler
 from ConcertScraper import ConcertFinder as CFinder
+from Models.user_settings import UserSettings
 from ModifyUserSettings import LocatorSetup, LocatorMain
 from Notifier import *
 from scheduler_setup import *
@@ -87,9 +88,10 @@ class FirstTimeStartup:
 
     def __init__(self,parent):
         """Initializes the parameters used across methods and then runs the instance"""
+        self.user_settings = UserSettings()
         self.spotifyapp = None
         self.root = parent
-        self.user_data_setup = LocatorSetup() #
+        self.user_data_setup = LocatorSetup(self.user_settings) #
         self.user_data_setup = self.user_data_setup()
         self.queue = queue.Queue()
         parent.protocol("WM_DELETE_WINDOW", self.exit_all)
@@ -146,6 +148,10 @@ class FirstTimeStartup:
         message2.pack(), location_input.pack(), location_input_button.pack()
         frame2.pack()
 
+        if not self.user_settings.user_location.__contains__(None):
+            frame2.destroy()
+            self.spotify_int()
+
     # These methods are run sequentially if spotify integration is selected
 
     def spotify_int(self):
@@ -179,8 +185,25 @@ class FirstTimeStartup:
         bfrm.pack()
         spotint.pack()
 
+        if self.user_settings.spotify_id is not None:
+            spotint.destroy()
+            self.root.update()
+            self.spotify_setup_user_input()
+
     def spotify_setup_user_input(self):
         """Gets the users spotify ID and attempts to validate credentials"""
+
+        if self.user_settings.spotify_id is not None:
+            self.user_data_setup.send(self.user_settings.spotify_id)
+            f = Label(master=self.root,text='Getting Playlist Data - Please Wait')
+            f.pack()
+            self.root.update()
+            self.spotifyapp = spot.SpotifyIntegration('playlist-read-private',self.user_settings.spotify_id) # playlist-read-private is the only scope needed, so this is hardcoded
+            self.spotifyapp = self.spotifyapp()
+            playlists = next(self.spotifyapp)
+            f.destroy()
+            self.spotify_select_playlists(playlists)
+
         def spotint_send_button(event):
 
             user_id = spot_usrsetup_field.get()
@@ -207,6 +230,7 @@ class FirstTimeStartup:
         spot_usrsetup_button.bind('<Button-1>',spotint_send_button)
         spot_usrsetup_dist.pack(),spot_usrsetup_button.pack(),spot_usrsetup_field.pack()
         spot_usrsetup.pack()
+
 
     def spotify_select_playlists(self,playlists):
         """Gets a list of playlists from the users Spotify account and sends the selected playlists foreward"""

@@ -1,10 +1,7 @@
-
-from spotipy.oauth2 import SpotifyClientCredentials
-
-import time
 import json
-from collections import defaultdict
 import logging
+import time
+from collections import defaultdict
 
 import spotipy
 

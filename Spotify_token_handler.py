@@ -3,9 +3,10 @@ has only been broken up like this such as to minimize the number of times
 the server is accessed"""
 
 from __future__ import print_function
+
 import json
-import time
 import os
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
@@ -92,12 +93,12 @@ def spotify_get_token(scope):
     if token == 'Invalid Scope':
         pass # this should never happen
     elif token == 'Token is Expired' or token =='Token Info not found':
-        res = requests.get('http://73.18.119.167:8085/spotify_auth_link.json',timeout=10)
+        res = requests.get('http://73.18.119.167:8080/spotify_auth_link.json',timeout=10)
         try:
 
             webbrowser.open(res.json())
             code = get_authentication_code()
-            token_info = requests.get('http://73.18.119.167:8085/access_token.json',params={'code':code})
+            token_info = requests.get('http://73.18.119.167:8080/access_token.json',params={'code':code})
             tkinfo = token_info.json()
             einfo = token_info.text
             with open('userdata\\.cache-user-token','w') as cache:
